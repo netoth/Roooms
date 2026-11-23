@@ -149,7 +149,8 @@ let pausedFrom = null;    // play | choice | inventory
 let choicePendingResume = false;
 let debugReturn = 'menu'; // откуда открыто меню отладки: menu | pause
 let debugSpeed = 1;       // спидхак: множитель скорости игры
-let debugGameplay = false;      // боковое меню характеристик во время игры
+let debugGameplay = false;      // главный выключатель боковой панели: без него панели нет нигде
+let debugGameInGame = false;    // при включённом главном — показывать панель и во время забега
 let debugAutoAttack = false;    // зажатие атаки для любого оружия
 let debugEnemyPause = false;    // враги замирают и не атакуют
 let debugFreeChoice = false;    // меню баффов открыто из боковой панели, без завершения комнаты
@@ -607,6 +608,7 @@ function showOverlay(name) {
   screens.exitConfirm.classList.toggle('active', name === 'exitConfirm');
   screens.confirm.classList.toggle('active', name === 'confirm');
   screens.end.classList.toggle('active', name === 'end');
+  syncPauseDebugLayer();
 }
 
 function xpNeeded(level) {
@@ -674,9 +676,9 @@ const BUFFS = [
     apply: (p) => { p.speed += 30; } },
   { id: 'hp30', icon: '💖', name: 'Здоровье +30', desc: 'Максимальное здоровье +30. Сразу восстанавливает 30 HP.', weight: 3, tag: 'ПОНИЖЕННЫЙ ШАНС',
     apply: (p) => { p.maxHp += 30; p.hp = Math.min(p.maxHp, p.hp + 30); } },
-  { id: 'explosion', icon: '💣', name: 'Взрыв', desc: 'Пули при попадании пропадают и взрываются, нанося 50% обычного урона пули всем врагам в области. Работает только с пистолетом или дробовиком. Включать и выключать можно в инвентаре.', weight: 1, unique: true, requiresGunWeapon: true, tag: 'РЕДКИЙ · УНИКАЛЬНЫЙ · НУЖЕН ПИСТОЛЕТ ИЛИ ДРОБОВИК',
+  { id: 'explosion', icon: '💣', name: 'Взрыв', desc: 'Пули при попадании пропадают и взрываются, нанося 50% обычного урона пули всем врагам в области. Работает только с пистолетом или дробовиком. Включать и выключать можно в инвентаре.', weight: 3, unique: true, requiresGunWeapon: true, tag: 'ПОНИЖЕННЫЙ ШАНС · УНИКАЛЬНЫЙ · НУЖЕН ПИСТОЛЕТ ИЛИ ДРОБОВИК',
     apply: (p) => { p.explosion = true; p.explosionEnabled = true; } },
-  { id: 'vampirism', icon: '🧛', name: 'Вампиризм', desc: 'При ударе по врагу восстанавливает 50% нанесённого урона, но естественная регенерация падает до +2 HP в секунду. Работает только с ближним боем и секирой. Включать и выключать можно в инвентаре.', weight: 1, unique: true, tag: 'РЕДКИЙ · УНИКАЛЬНЫЙ · БЛИЖНИЙ БОЙ И СЕКИРА',
+  { id: 'vampirism', icon: '🧛', name: 'Вампиризм', desc: 'При ударе по врагу восстанавливает 50% нанесённого урона, но естественная регенерация падает до +2 HP в секунду. Работает только с ближним боем и секирой. Включать и выключать можно в инвентаре.', weight: 3, unique: true, tag: 'ПОНИЖЕННЫЙ ШАНС · УНИКАЛЬНЫЙ · БЛИЖНИЙ БОЙ И СЕКИРА',
     apply: (p) => { p.vampirism = true; p.vampirismEnabled = true; } },
   { id: 'shotgun', icon: '💣', name: 'Дробовик', desc: 'Задержка между выстрелами ×2, но за один выстрел вылетает от 2 до 6 пуль.', weight: 10, unique: true, weapon: 'shotgun', tag: 'ОРУЖИЕ · УНИКАЛЬНЫЙ',
     apply: (p) => { p.weapon = 'shotgun'; } },
@@ -686,10 +688,10 @@ const BUFFS = [
     apply: (p) => { p.weapon = 'rapier'; } },
   { id: 'mg', icon: '🔥', name: 'Пулемёт', desc: 'По нажатию — почти 0,7 с тряски и залп пуль до перегрева (~3 с), затем 3 с без стрельбы. Удержание кнопки не работает.', weight: 3, unique: true, weapon: 'mg', tag: 'ОРУЖИЕ · УНИКАЛЬНЫЙ',
     apply: (p) => { p.weapon = 'mg'; } },
-  { id: 'slow5', icon: '🐌', name: 'Замедление врагов +5', desc: 'Все враги двигаются на 5 единиц медленнее.', weight: 10,
-    apply: (p) => { p.slow += 5; } },
-  { id: 'slow20', icon: '🧊', name: 'Замедление врагов +20', desc: 'Все враги двигаются на 20 единиц медленнее.', weight: 3, tag: 'ПОНИЖЕННЫЙ ШАНС',
-    apply: (p) => { p.slow += 20; } },
+  { id: 'slow10', icon: '🐌', name: 'Замедление врагов +10', desc: 'Все враги двигаются на 10 единиц медленнее.', weight: 10,
+    apply: (p) => { p.slow += 10; } },
+  { id: 'slow30', icon: '🧊', name: 'Замедление врагов +30', desc: 'Все враги двигаются на 30 единиц медленнее.', weight: 3, tag: 'ПОНИЖЕННЫЙ ШАНС',
+    apply: (p) => { p.slow += 30; } },
 ];
 
 // Взрыв работает только с пушками; с остальным оружием бафф просто не действует
@@ -709,14 +711,19 @@ const FULL_BUFF_WEIGHT = BUFFS.reduce((sum, b) => sum + b.weight, 0);
 // Порядок эффектов в энциклопедии. Остальные карточки описаны отдельно
 // в разделах «Способности» и «Оружие», поэтому здесь не дублируются.
 const EFFECT_ORDER = [
-  'dmg10', 'spd10', 'hp10', 'as10', 'slow5',
-  'dmg30', 'spd30', 'hp30', 'as30', 'slow20',
+  'dmg10', 'spd10', 'hp10', 'as10', 'slow10',
+  'dmg30', 'spd30', 'hp30', 'as30', 'slow30',
 ];
 
 function dropChanceText(weight) {
-  // За выбор берутся две разные карточки без возврата: считаем шанс
-  // появления эффекта хотя бы в одной из них из полного пула.
-  const chance = 1 - (1 - weight / FULL_BUFF_WEIGHT) * (1 - weight / (FULL_BUFF_WEIGHT - 1));
+  // За выбор берутся две разные карточки без возврата. После первого выбора
+  // общий вес пула уменьшается на вес убранной карточки, поэтому нельзя
+  // считать второй выбор как w / (total - 1) — нужно усреднить по всем
+  // возможным первым карточкам.
+  const total = FULL_BUFF_WEIGHT;
+  const ownTerm = weight / (total - weight);
+  const otherTerms = BUFFS.reduce((sum, buff) => sum + buff.weight / (total - buff.weight), 0);
+  const chance = (weight / total) * (1 + otherTerms - ownTerm);
   return `Шанс появиться между уровнями: ~${(chance * 100).toFixed(1).replace('.', ',')}% за выбор из полного пула (две карточки).`;
 }
 
@@ -779,22 +786,22 @@ const INFO_SECTIONS = [
         id: 'ability-explosion',
         name: ABILITIES.explosion.name,
         icon: ABILITIES.explosion.icon,
-        tag: 'РЕДКИЙ · УНИКАЛЬНЫЙ',
+        tag: 'ПОНИЖЕННЫЙ ШАНС · УНИКАЛЬНЫЙ',
         lines: [
           'Пули при попадании во врага или препятствие исчезают и взрываются в радиусе 78. Взрыв наносит 50% урона пули всем врагам в зоне; враги за укрытием получают 50% урона взрыва.',
           'Совместимость: пистолет и дробовик. С ближним боем, секирой, рапирой и пулемётом не работает.',
-          'Включается и выключается в инвентаре. Уникальный дроп, шанс ~1,9%; карточка появляется только если у вас уже есть пистолет или дробовик.',
+          `Включается и выключается в инвентаре. Уникальный дроп. ${dropChanceText(BUFFS.find((b) => b.id === 'explosion').weight)} Карточка появляется только если у вас уже есть пистолет или дробовик.`,
         ],
       },
       {
         id: 'ability-vampirism',
         name: ABILITIES.vampirism.name,
         icon: ABILITIES.vampirism.icon,
-        tag: 'РЕДКИЙ · УНИКАЛЬНЫЙ',
+        tag: 'ПОНИЖЕННЫЙ ШАНС · УНИКАЛЬНЫЙ',
         lines: [
           'При ударе по врагу восстанавливает 50% нанесённого урона. Естественная регенерация падает с +5 до +2 HP в секунду.',
           'Совместимость: ближний бой и секира. С рапирой, пистолетом, дробовиком и пулемётом не работает.',
-          'Включается и выключается в инвентаре. Уникальный дроп, шанс ~1,9%.',
+          `Включается и выключается в инвентаре. Уникальный дроп. ${dropChanceText(BUFFS.find((b) => b.id === 'vampirism').weight)}`,
         ],
       },
     ],
@@ -941,7 +948,7 @@ const INFO_SECTIONS = [
         lines: [
           '«Режим бога» — полностью убирает входящий урон.',
           '«Полный контроль» — все эффекты на выбор, можно выбрать несколько.',
-          '«Отладка игрового процесса» — включает боковую панель характеристик во время игры.',
+          '«Отладка игрового процесса» — главный выключатель боковой панели: если он выключен, панель не показывается ни в паузе, ни в игре.',
           '«Скорость игры» — пресеты 0,25×, 0,5×, 1×, 1,5× и 2×.',
           '«Добавить опыт» — целое число любой длины через BigInt; кнопка «Ввести» или ENTER, отрицательные значения обнуляют опыт.',
           '«Сбросить уровень» — возвращает уровень 1 и опыт 0 после подтверждения; «Назад» возвращает в меню или паузу.',
@@ -953,6 +960,7 @@ const INFO_SECTIONS = [
           'Пять полей с плюсом/минусом: урон, скорость, здоровье, скорость атаки (в процентах) и замедление врагов.',
           '«Автоматическая атака» — зажатие ЛКМ/Пробела работает для любого оружия; сама по себе кнопка атаку не начинает.',
           '«Пауза врагов» — враги, боссы, их пули, спавн и подкрепления замирают; игрок может двигаться, атаковать и менять настройки.',
+          '«Показывать в игре» — работает только при включённом главном переключателе: выключено — панель только в паузе, включено — и в паузе, и во время забега.',
           'Кнопки: «ЕЩЕ» — полный контроль без завершения комнаты; «ИНВЕНТАРЬ» — тоже без перехода; «ЗАВЕРШИТЬ УРОВЕНЬ» — обычный проход комнаты; «МЕНЮ ОТЛАДКИ» — открывает общую отладку через паузу.',
         ],
       },
@@ -2931,6 +2939,7 @@ function openPause() {
   keys.clear();
   mouse.down = false;
   showOverlay('pause');
+  syncGameDebugPanel();
 }
 
 function resumeGame() {
@@ -2945,6 +2954,7 @@ function resumeGame() {
   } else {
     showOverlay(back === 'play' ? null : back);
   }
+  syncGameDebugPanel();
 }
 
 /* ---------- Завершение забега ---------- */
@@ -3241,6 +3251,8 @@ function syncDebugToggles() {
   $('controlToggle').textContent = debugFullControl ? 'ВКЛ' : 'ВЫКЛ';
   $('gameDebugToggle').classList.toggle('on', debugGameplay);
   $('gameDebugToggle').textContent = debugGameplay ? 'ВКЛ' : 'ВЫКЛ';
+  $('gameDebugInGameToggle').classList.toggle('on', debugGameInGame);
+  $('gameDebugInGameToggle').textContent = debugGameInGame ? 'ВКЛ' : 'ВЫКЛ';
   $('autoAttackToggle').classList.toggle('on', debugAutoAttack);
   $('autoAttackToggle').textContent = debugAutoAttack ? 'ВКЛ' : 'ВЫКЛ';
   $('enemyPauseToggle').classList.toggle('on', debugEnemyPause);
@@ -3350,6 +3362,11 @@ $('gameDebugToggle').addEventListener('click', () => {
   syncDebugToggles();
   syncGameDebugPanel();
 });
+$('gameDebugInGameToggle').addEventListener('click', () => {
+  debugGameInGame = !debugGameInGame;
+  syncDebugToggles();
+  syncGameDebugPanel();
+});
 $('autoAttackToggle').addEventListener('click', () => {
   debugAutoAttack = !debugAutoAttack;
   syncDebugToggles();
@@ -3411,15 +3428,23 @@ const gameDebugFields = {
 
 function syncGameDebugPanel() {
   const panel = $('gameDebugPanel');
-  const visible = !!run && debugGameplay && mode !== 'menu' && mode !== 'end';
+  // Главный переключатель разрешает панель вообще. Без него её нет нигде.
+  // При включённом — в паузе она есть всегда, а «ПОКАЗЫВАТЬ В ИГРЕ»
+  // дополнительно оставляет её видимой во время забега.
+  const inRun = !!run && mode !== 'menu' && mode !== 'end';
+  const visible = inRun && debugGameplay && (mode === 'pause' || debugGameInGame);
   if (visible && !isTouchDevice) {
     const gap = Math.max(12, window.innerHeight - screens.game.getBoundingClientRect().bottom);
     document.documentElement.style.setProperty('--debug-panel-bottom', `${gap}px`);
   }
   panel.classList.toggle('visible', visible);
   panel.setAttribute('aria-hidden', visible ? 'false' : 'true');
-  // На телефоне сдвигаем игровое поле влево, чтобы оно не перекрывалось панелью
-  document.body.classList.toggle('game-debug-open', visible);
+  // На телефоне сдвигаем игровое поле влево только тогда, когда панель
+  // реально мешает бою: включены оба переключателя. В паузе при одном
+  // главном переключателе интерфейс остаётся нетронутым.
+  const shiftInterface = inRun && debugGameplay && debugGameInGame;
+  document.body.classList.toggle('game-debug-open', shiftInterface);
+  syncPauseDebugLayer();
   if (!visible) {
     const active = document.activeElement;
     if (active && panel.contains(active)) active.blur();
@@ -3433,6 +3458,18 @@ function syncGameDebugPanel() {
   $('gdpHealthVal').textContent = `${Math.ceil(p.hp)}/${p.maxHp}`;
   $('gdpAttackVal').textContent = `${Math.round(p.attackSpeed * 100)}%`;
   $('gdpSlowVal').textContent = p.slow;
+}
+
+// В паузе боковая панель отладки должна оставаться поверх затемнения
+// и принимать клики, но не мешать вложенным окнам (отладка, подтверждения).
+function syncPauseDebugLayer() {
+  const panelVisible = $('gameDebugPanel').classList.contains('visible');
+  const pauseOnTop = mode === 'pause'
+    && screens.pause.classList.contains('active')
+    && !screens.debug.classList.contains('active')
+    && !screens.exitConfirm.classList.contains('active')
+    && !screens.confirm.classList.contains('active');
+  document.body.classList.toggle('pause-debug-open', panelVisible && pauseOnTop);
 }
 
 // Меню из боковой панели: не завершаем комнату и не переходим в следующую.
@@ -3460,8 +3497,8 @@ $('gdpMore').addEventListener('click', debugOpenFreeChoice);
 $('gdpInventory').addEventListener('click', debugOpenFreeInventory);
 $('gdpComplete').addEventListener('click', debugCompleteRoom);
 $('gdpDebug').addEventListener('click', () => {
-  if (!run || mode !== 'play') return;
-  openPause();
+  if (!run || !['play', 'pause'].includes(mode)) return;
+  if (mode === 'play') openPause();
   openDebug('pause');
 });
 

@@ -10,7 +10,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=129">
 </head>
 <body>
   <div id="app">
@@ -225,6 +225,10 @@
             <div><b>ПАУЗА ВРАГОВ</b><span>Враги не двигаются и не атакуют</span></div>
             <button id="enemyPauseToggle" class="toggle-btn" type="button">ВЫКЛ</button>
           </div>
+          <div class="debug-row">
+            <div><b>ПОКАЗЫВАТЬ В ИГРЕ</b><span>Оставлять панель видимой после выхода из паузы</span></div>
+            <button id="gameDebugInGameToggle" class="toggle-btn" type="button">ВЫКЛ</button>
+          </div>
         </div>
 
         <div class="gdp-actions">
@@ -284,7 +288,7 @@
             <button id="controlToggle" class="toggle-btn" type="button">ВЫКЛ</button>
           </div>
           <div class="debug-row">
-            <div><b>ОТЛАДКА ИГРОВОГО ПРОЦЕССА</b><span>Боковое меню характеристик во время игры</span></div>
+            <div><b>ОТЛАДКА ИГРОВОГО ПРОЦЕССА</b><span>Разрешает боковую панель характеристик; без неё панель скрыта везде</span></div>
             <button id="gameDebugToggle" class="toggle-btn" type="button">ВЫКЛ</button>
           </div>
         </div>
@@ -396,6 +400,6 @@
     <span>Игра работает только в альбомном режиме</span>
   </div>
 
-  <script src="game.js"></script>
+  <script src="game.js?v=129"></script>
 </body>
 </html>
