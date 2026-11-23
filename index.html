@@ -17,6 +17,22 @@
         'width=844, user-scalable=no, viewport-fit=cover');
     })();
   </script>
+  <script>
+    // Установленное приложение открывает start_url без ?v и может получить
+    // закэшированную страницу. Проверяем актуальную сборку и переходим на неё.
+    (() => {
+      const current = Number(new URLSearchParams(location.search).get('v')) || 0;
+      fetch('version.json?cb=' + Date.now(), { cache: 'no-store' })
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => {
+          if (!data || !Number.isFinite(data.v) || data.v <= current) return;
+          const url = new URL(location.href);
+          url.searchParams.set('v', String(data.v));
+          location.replace(url.toString());
+        })
+        .catch(() => { /* файл:// или офлайн — работаем как есть */ });
+    })();
+  </script>
   <title>Roooms — 2D Roguelike</title>
   <meta name="application-name" content="Roooms">
   <meta name="theme-color" content="#0a0b14">
@@ -24,7 +40,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="style.css?v=164">
+  <link rel="stylesheet" href="style.css?v=165">
 </head>
 <body>
   <div id="app">
@@ -449,7 +465,7 @@
     <span>Игра работает только в альбомном режиме</span>
   </div>
 
-  <script src="i18n.js?v=164"></script>
-  <script src="game.js?v=164"></script>
+  <script src="i18n.js?v=165"></script>
+  <script src="game.js?v=165"></script>
 </body>
 </html>
