@@ -51,14 +51,17 @@ const COLLISION_EPS = 0.01;  // погрешность округления пр
 const SAVE_KEY = 'ten_rooms_save_v1';
 const SOUND_KEY = 'ten_rooms_sound_v1';
 const LEGACY_VERSION_NOTICE_ID = 'version-panel';
+// Счётчик рассылки: увеличивается, когда нужно показать ту же метку ещё раз
+// без смены номера версии (например, перед публикацией на GitHub).
+const NOTICE_EPOCH = 1;
 let pendingNoticeDismiss = false;
 
-// ID метки привязан к номеру версии: новая версия = новый ID = метка показывается
+// ID метки привязан к версии и счётчику рассылки: новый ID = метка показывается
 // один раз у каждого игрока, даже на GitHub Pages, где сохранение живёт в localStorage.
 function versionNoticeId() {
   const el = document.querySelector('.version-value');
   const version = (el && el.textContent ? el.textContent : '').trim() || '1.1';
-  return `version-panel-${version}`;
+  return `version-panel-${version}-e${NOTICE_EPOCH}`;
 }
 
 // Сложность задаёт параметры врагов и правила волн.
