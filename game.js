@@ -53,7 +53,7 @@ const SOUND_KEY = 'ten_rooms_sound_v1';
 const LEGACY_VERSION_NOTICE_ID = 'version-panel';
 // Счётчик рассылки: увеличивается, когда нужно показать ту же метку ещё раз
 // без смены номера версии (например, перед публикацией на GitHub).
-const NOTICE_EPOCH = 1;
+const NOTICE_EPOCH = 2;
 let pendingNoticeDismiss = false;
 
 // ID метки привязан к версии и счётчику рассылки: новый ID = метка показывается
