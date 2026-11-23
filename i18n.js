@@ -26,6 +26,11 @@ const EN = {
   '10 КОМНАТ': '10 ROOMS',
   '100 КОМНАТ': '100 ROOMS',
   'скорость ×1,5': 'speed ×1.5',
+  'ЧИСТОЕ ПОЛЕ': 'CLEAR FIELD',
+  'бесконечно, без преград': 'endless, no obstacles',
+  'БОССИНГ': 'BOSS RUSH',
+  'бесконечно, босс в каждой комнате': 'endless, boss in every room',
+  'БЕСКОНЕЧНО': 'ENDLESS',
   'СЛОЖНОСТЬ': 'DIFFICULTY',
   'ЛЕГКИЙ': 'EASY',
   'СЛОЖНЫЙ': 'HARD',
@@ -67,7 +72,13 @@ const EN = {
 • Убраны остатки русского текста из англоязычного интерфейса, в том числе в canvas и подсказках.
 • Исправлено сворачивание панели версии по Esc и повторному клику без открытия паузы.
 • Уточнены шансы дропа и десятичная точка в английском языке.
-• Плавные анимации отключаются при prefers-reduced-motion.`]: `VERSION 1.1
+• Плавные анимации отключаются при prefers-reduced-motion.
+
+Дополнения:
+• Два бесконечных режима: «Чистое поле» без преград и боссов и «Боссинг» с боссом в каждой комнате.
+• Рапира: урон 100%, оглушение врагов 1 с, замедление после рывка убрано.
+• Ближний бой: урон увеличен до 200%.
+• Меню режимов адаптировано под четыре карточки на альбомных экранах телефона.`]: `VERSION 1.1
 
 Major updates:
 • Full interface translation into English with a language switch in Settings. The choice is saved in save.json.
@@ -85,7 +96,13 @@ Fixes and interface:
 • Removed leftover Russian text from the English interface, including canvas and hints.
 • Fixed collapsing the version panel with Esc or a second click without opening pause.
 • Corrected drop chances and decimal separators in English.
-• Smooth animations are disabled with prefers-reduced-motion.`,
+• Smooth animations are disabled with prefers-reduced-motion.
+
+Additions:
+• Two endless modes: Clear Field with no obstacles or bosses, and Boss Rush with a boss in every room.
+• Rapier: 100% damage, 1s enemy stun, post-dash slowdown removed.
+• Melee: damage increased to 200%.
+• Mode menu adapted to four cards on landscape phone screens.`,
   'Русский язык': 'Russian',
   'Основной язык интерфейса': 'Main interface language',
   'Английский язык': 'English',
@@ -217,9 +234,9 @@ Fixes and interface:
   'Игра работает только в альбомном режиме': 'The game only works in landscape mode',
 
   // Оружие
-  'Короткий удар очень узким сектором (~45°) перед собой. Атака в 1,5 раза быстрее, можно зажимать.': 'A short, very narrow (~45°) swing in front of you. Attacks 1.5× faster and can be held down.',
-  'Три быстрых удара по нажатию, но долгая перезарядка. Каждый удар на 50% слабее обычного и сильно отбрасывает врагов.': 'Three fast hits per press, but a long cooldown. Each hit is 50% weaker than normal and knocks enemies back hard.',
-  'Рывок к курсору (КД 1,2 с) бьёт и оглушает врагов. Урон −50%, урон в рывке −75%, после рывка — замедление 30% на 2 с.': 'Dash toward the cursor (CD 1.2s), hitting and stunning enemies. Damage −50%, dash damage −75%, then 30% slow for 2s.',
+  'Короткий удар очень узким сектором (~45°) перед собой. Урон 200%, атака в 1,5 раза быстрее, можно зажимать.': 'A short, very narrow (~45°) swing in front of you. 200% damage, attacks 1.5× faster and can be held down.',
+  'Три быстрых удара по нажатию, но долгая перезарядка. Каждый удар равен 50% базового урона и сильно отбрасывает врагов.': 'Three fast hits per press, but a long cooldown. Each hit deals 50% of base damage and knocks enemies back hard.',
+  'Рывок к курсору (КД 1,2 с) бьёт и оглушает врагов на 1 с. Урон 100%, получаемый урон в рывке −75%.': 'Dash toward the cursor (CD 1.2s), hitting and stunning enemies for 1s. 100% damage, damage taken during the dash −75%.',
   'Одиночные выстрелы по курсору. Можно стрелять зажатием.': 'Single shots toward the cursor. Holding fires repeatedly.',
   'Задержка выстрела ×2, но за раз вылетает от 2 до 6 пуль.': 'Twice the fire delay, but 2 to 6 pellets per shot.',
   'По нажатию персонаж почти 0,7 с трясётся, затем сам выпускает залп пуль до перегрева (~3 с) и 3 с не стреляет. Удержание кнопки не работает.': 'On press the character shakes for about 0.7s, then fires a burst until overheating (~3s) and stops shooting for 3s. Holding the button does not work.',
@@ -259,7 +276,7 @@ Fixes and interface:
   'Дробовик': 'Shotgun',
   'Задержка между выстрелами ×2, но за один выстрел вылетает от 2 до 6 пуль.': 'Twice the delay between shots, but 2 to 6 pellets per shot.',
   'Секира': 'Axe',
-  'Три быстрых удара за одно нажатие с длинной перезарядкой. Каждый удар на 50% слабее обычного, но отбрасывание усилено вдвое.': 'Three fast hits per press with a long cooldown. Each hit is 50% weaker than normal, but knockback is doubled.',
+  'Три быстрых удара за одно нажатие с длинной перезарядкой. Каждый удар равен 50% базового урона, но отбрасывание усилено вдвое.': 'Three fast hits per press with a long cooldown. Each hit deals 50% of base damage, but knockback is doubled.',
   'Рапира': 'Rapier',
   'По нажатию — почти 0,7 с тряски и залп пуль до перегрева (~3 с), затем 3 с без стрельбы. Удержание кнопки не работает.': 'On press — about 0.7s of shaking and a bullet burst until overheating (~3s), then 3s without shooting. Holding the button does not work.',
   'Пулемёт': 'MG',
@@ -269,12 +286,12 @@ Fixes and interface:
   'Все враги двигаются на 30 единиц медленнее.': 'All enemies move 30 units slower.',
 
   // Энциклопедия: оружие
-  'Дальность 96, удар сектором ~45°, перезарядка 0,33 с (скорость атаки ×1,5), урон 100%, отбрасывание 170. Зажатие ЛКМ или Пробела работает по умолчанию.': 'Range 96, ~45° sector hit, 0.33s cooldown (1.5× attack speed), 100% damage, knockback 170. Holding LMB or Space works by default.',
+  'Дальность 96, удар сектором ~45°, перезарядка 0,33 с (скорость атаки ×1,5), урон 200%, отбрасывание 170. Зажатие ЛКМ или Пробела работает по умолчанию.': 'Range 96, ~45° sector hit, 0.33s cooldown (1.5× attack speed), 200% damage, knockback 170. Holding LMB or Space works by default.',
   'Получение: стартовое оружие. Заменяется карточкой любого другого оружия.': 'How to get: starting weapon. Replaced by any other weapon card.',
-  'Дальность 105, перезарядка 1,3 с. Одно нажатие наносит три удара, каждый — 50% обычного урона и с отбрасыванием 640.': 'Range 105, 1.3s cooldown. One press deals three hits, each at 50% normal damage with 640 knockback.',
+  'Дальность 105, перезарядка 1,3 с. Одно нажатие наносит три удара, каждый — 50% базового урона и с отбрасыванием 640.': 'Range 105, 1.3s cooldown. One press deals three hits, each at 50% of base damage with 640 knockback.',
   'Получение: уникальная карточка «Секира».': 'How to get: unique “Axe” card.',
   'КД 1,2 с. Рывок на 456 пикселей за 0,55 с в фиксированном направлении; клавиатура во время рывка не влияет на путь.': 'CD 1.2s. Dashes 456 pixels in 0.55s in a fixed direction; keyboard input does not affect the path during the dash.',
-  'Урон 50%, каждый враг получает только одно попадание за рывок и оглушается на 2 с. Входящий урон в рывке ×0,25. Удар о стену прерывает рывок и оглушает игрока на 1 с; после обычного рывка скорость −30% на 2 с.': '50% damage, each enemy can be hit once per dash and is stunned for 2s. Incoming damage during the dash ×0.25. Hitting a wall interrupts the dash and stuns the player for 1s; after a normal dash, speed −30% for 2s.',
+  'Урон 100%, каждый враг получает только одно попадание за рывок и оглушается на 1 с. Входящий урон в рывке ×0,25. Удар о стену прерывает рывок и оглушает игрока на 1 с; замедления после рывка нет.': '100% damage, each enemy can be hit once per dash and is stunned for 1s. Incoming damage during the dash ×0.25. Hitting a wall interrupts the dash and stuns the player for 1s; no slowdown after the dash.',
   'Получение: уникальная карточка «Рапира».': 'How to get: unique “Rapier” card.',
   'Перезарядка 0,35 с, одна пуля со скоростью 560. Прицел — курсор. Зажатие ЛКМ или Пробела работает по умолчанию.': '0.35s cooldown, one bullet at speed 560. Aims at the cursor. Holding LMB or Space works by default.',
   'Получение: уникальная карточка «Пистолет».': 'How to get: unique “Pistol” card.',
@@ -325,6 +342,11 @@ Fixes and interface:
   'Забег из 100 комнат: весь геймплей ускорен в 1,5 раза.': '100-room run: all gameplay is 1.5× faster.',
   'Босс каждые 10 комнат: 1000 HP и 50 урона, каждый следующий сильнее в 1,5 раза; на 100-й комнате параметры сбрасываются к первому боссу.': 'A boss every 10 rooms: 1000 HP and 50 damage, each next one 1.5× stronger; on room 100 stats reset to the first boss.',
   'Опыт не делится: итоговый множитель зависит только от выбранной сложности.': 'XP is not divided: the final multiplier depends only on the chosen difficulty.',
+  'Бесконечный забег: комнат нет предела, пока не погибнешь.': 'Endless run: rooms never end until you die.',
+  'Препятствия и боссы не появляются — только обычные враги, которые сильнеют от комнаты к комнате на 5–30%.': 'No obstacles or bosses — only regular enemies that get 5–30% stronger each room.',
+  'Победы в этом режиме нет: забег заканчивается только поражением.': 'There is no victory in this mode: the run ends only in defeat.',
+  'Бесконечный забег: босс в каждой комнате, препятствия не создаются.': 'Endless run: a boss in every room, no obstacles.',
+  'Босс: 750 HP и 30 урона в первой комнате, дальше +25% HP и +15% урона за комнату; после 10-й комнаты цикл начинается заново.': 'Boss: 750 HP and 30 damage in the first room, then +25% HP and +15% damage per room; after room 10 the cycle restarts.',
 
   // Энциклопедия: уровень
   'УРОВЕНЬ ИГРОКА': 'PLAYER LEVEL',
@@ -401,7 +423,7 @@ const PATTERNS = [
   [/^БОСС · (\d+) УРОНА · (\d+) \/ (\d+) HP$/, (m, d, hp, max) => `BOSS · ${d} DMG · ${hp}/${max} HP`],
   [/^БОСС · КОМНАТА (\d+)$/, (m, n) => `BOSS · ROOM ${n}`],
   [/^КОМНАТА (\d+)$/, (m, n) => `ROOM ${n}`],
-  [/^КОМНАТА (\d+)\/(\d+)$/, (m, n, total) => `ROOM ${n}/${total}`],
+  [/^КОМНАТА (\d+)\/(\d+|∞)$/, (m, n, total) => `ROOM ${n}/${total}`],
   [/^Врагов: (\d+)$/, (m, n) => `Enemies: ${n}`],
   [/^ОРУЖИЕ: (.+)$/, (m, name) => `WEAPON: ${translateText(name)}`],
   [/^В МЕНЮ \((\d+)\)$/, (m, n) => `MENU (${n})`],

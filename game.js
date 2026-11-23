@@ -181,7 +181,7 @@ function updateSaveLoadingUI() {
 }
 
 let save = loadSave();
-let selectedMode = 'normal'; // normal | hundred
+let selectedMode = 'normal'; // normal | hundred | clean | bossrush
 let selectedDifficulty = 'normal'; // easy | normal | hard | ultra
 let selectedLanguage = save.lang; // ru | en — берём из сохранения, как и уровень
 let debugGodMode = false;
@@ -813,9 +813,9 @@ function refreshMenu() {
 
 /* ---------- Оружие ---------- */
 const WEAPONS = {
-  melee:   { name: 'БЛИЖНИЙ БОЙ', icon: '🗡️', desc: 'Короткий удар очень узким сектором (~45°) перед собой. Атака в 1,5 раза быстрее, можно зажимать.' },
-  axe:     { name: 'СЕКИРА', icon: '🪓', desc: 'Три быстрых удара по нажатию, но долгая перезарядка. Каждый удар на 50% слабее обычного и сильно отбрасывает врагов.' },
-  rapier:  { name: 'РАПИРА', icon: '⚔️', desc: 'Рывок к курсору (КД 1,2 с) бьёт и оглушает врагов. Урон −50%, урон в рывке −75%, после рывка — замедление 30% на 2 с.' },
+  melee:   { name: 'БЛИЖНИЙ БОЙ', icon: '🗡️', desc: 'Короткий удар очень узким сектором (~45°) перед собой. Урон 200%, атака в 1,5 раза быстрее, можно зажимать.' },
+  axe:     { name: 'СЕКИРА', icon: '🪓', desc: 'Три быстрых удара по нажатию, но долгая перезарядка. Каждый удар равен 50% базового урона и сильно отбрасывает врагов.' },
+  rapier:  { name: 'РАПИРА', icon: '⚔️', desc: 'Рывок к курсору (КД 1,2 с) бьёт и оглушает врагов на 1 с. Урон 100%, получаемый урон в рывке −75%.' },
   pistol:  { name: 'ПИСТОЛЕТ', icon: '🔫', desc: 'Одиночные выстрелы по курсору. Можно стрелять зажатием.' },
   shotgun: { name: 'ДРОБОВИК', icon: '💣', desc: 'Задержка выстрела ×2, но за раз вылетает от 2 до 6 пуль.' },
   mg:      { name: 'ПУЛЁМЁТ', icon: '🔥', desc: 'По нажатию персонаж почти 0,7 с трясётся, затем сам выпускает залп пуль до перегрева (~3 с) и 3 с не стреляет. Удержание кнопки не работает.' },
@@ -868,9 +868,9 @@ const BUFFS = [
     apply: (p) => { p.vampirism = true; p.vampirismEnabled = true; } },
   { id: 'shotgun', icon: '💣', name: 'Дробовик', desc: 'Задержка между выстрелами ×2, но за один выстрел вылетает от 2 до 6 пуль.', weight: 10, unique: true, weapon: 'shotgun', tag: 'ОРУЖИЕ · УНИКАЛЬНЫЙ',
     apply: (p) => { p.weapon = 'shotgun'; } },
-  { id: 'axe', icon: '🪓', name: 'Секира', desc: 'Три быстрых удара за одно нажатие с длинной перезарядкой. Каждый удар на 50% слабее обычного, но отбрасывание усилено вдвое.', weight: 10, unique: true, weapon: 'axe', tag: 'ОРУЖИЕ · УНИКАЛЬНЫЙ',
+  { id: 'axe', icon: '🪓', name: 'Секира', desc: 'Три быстрых удара за одно нажатие с длинной перезарядкой. Каждый удар равен 50% базового урона, но отбрасывание усилено вдвое.', weight: 10, unique: true, weapon: 'axe', tag: 'ОРУЖИЕ · УНИКАЛЬНЫЙ',
     apply: (p) => { p.weapon = 'axe'; } },
-  { id: 'rapier', icon: '⚔️', name: 'Рапира', desc: 'Рывок к курсору (КД 1,2 с) бьёт и оглушает врагов. Урон −50%, урон в рывке −75%, после рывка — замедление 30% на 2 с.', weight: 3, unique: true, weapon: 'rapier', tag: 'ОРУЖИЕ · УНИКАЛЬНЫЙ',
+  { id: 'rapier', icon: '⚔️', name: 'Рапира', desc: 'Рывок к курсору (КД 1,2 с) бьёт и оглушает врагов на 1 с. Урон 100%, получаемый урон в рывке −75%.', weight: 3, unique: true, weapon: 'rapier', tag: 'ОРУЖИЕ · УНИКАЛЬНЫЙ',
     apply: (p) => { p.weapon = 'rapier'; } },
   { id: 'mg', icon: '🔥', name: 'Пулемёт', desc: 'По нажатию — почти 0,7 с тряски и залп пуль до перегрева (~3 с), затем 3 с без стрельбы. Удержание кнопки не работает.', weight: 3, unique: true, weapon: 'mg', tag: 'ОРУЖИЕ · УНИКАЛЬНЫЙ',
     apply: (p) => { p.weapon = 'mg'; } },
@@ -921,16 +921,16 @@ function weaponAbilityLine(weaponId) {
 
 const WEAPON_INFO = {
   melee: [
-    'Дальность 96, удар сектором ~45°, перезарядка 0,33 с (скорость атаки ×1,5), урон 100%, отбрасывание 170. Зажатие ЛКМ или Пробела работает по умолчанию.',
+    'Дальность 96, удар сектором ~45°, перезарядка 0,33 с (скорость атаки ×1,5), урон 200%, отбрасывание 170. Зажатие ЛКМ или Пробела работает по умолчанию.',
     'Получение: стартовое оружие. Заменяется карточкой любого другого оружия.',
   ],
   axe: [
-    'Дальность 105, перезарядка 1,3 с. Одно нажатие наносит три удара, каждый — 50% обычного урона и с отбрасыванием 640.',
+    'Дальность 105, перезарядка 1,3 с. Одно нажатие наносит три удара, каждый — 50% базового урона и с отбрасыванием 640.',
     'Получение: уникальная карточка «Секира».',
   ],
   rapier: [
     'КД 1,2 с. Рывок на 456 пикселей за 0,55 с в фиксированном направлении; клавиатура во время рывка не влияет на путь.',
-    'Урон 50%, каждый враг получает только одно попадание за рывок и оглушается на 2 с. Входящий урон в рывке ×0,25. Удар о стену прерывает рывок и оглушает игрока на 1 с; после обычного рывка скорость −30% на 2 с.',
+    'Урон 100%, каждый враг получает только одно попадание за рывок и оглушается на 1 с. Входящий урон в рывке ×0,25. Удар о стену прерывает рывок и оглушает игрока на 1 с; замедления после рывка нет.',
     'Получение: уникальная карточка «Рапира».',
   ],
   pistol: [
@@ -1060,6 +1060,22 @@ const INFO_SECTIONS = [
           'Забег из 100 комнат: весь геймплей ускорен в 1,5 раза.',
           'Босс каждые 10 комнат: 1000 HP и 50 урона, каждый следующий сильнее в 1,5 раза; на 100-й комнате параметры сбрасываются к первому боссу.',
           'Опыт не делится: итоговый множитель зависит только от выбранной сложности.',
+        ],
+      },
+      {
+        id: 'mode-clean', name: 'ЧИСТОЕ ПОЛЕ', icon: '🌾', tag: 'БЕСКОНЕЧНО',
+        lines: [
+          'Бесконечный забег: комнат нет предела, пока не погибнешь.',
+          'Препятствия и боссы не появляются — только обычные враги, которые сильнеют от комнаты к комнате на 5–30%.',
+          'Победы в этом режиме нет: забег заканчивается только поражением.',
+        ],
+      },
+      {
+        id: 'mode-bossrush', name: 'БОССИНГ', icon: '👑', tag: 'БЕСКОНЕЧНО',
+        lines: [
+          'Бесконечный забег: босс в каждой комнате, препятствия не создаются.',
+          'Босс: 750 HP и 30 урона в первой комнате, дальше +25% HP и +15% урона за комнату; после 10-й комнаты цикл начинается заново.',
+          'Победы в этом режиме нет: забег заканчивается только поражением.',
         ],
       },
     ],
@@ -1409,6 +1425,23 @@ function pushOutOfBlocks(o) {
   o.y = clamp(o.y, o.r + 8, H - o.r - 8);
 }
 
+// Бесконечные режимы: нет последней комнаты, препятствия не создаются.
+function isEndlessRun() {
+  return !!run && !Number.isFinite(run.totalRooms);
+}
+
+function roomTotalLabel() {
+  return isEndlessRun() ? '∞' : String(run.totalRooms);
+}
+
+// Где в забеге появляется босс; используется и при генерации, и в треке комнат.
+function isBossRoomNumber(n) {
+  if (!run) return false;
+  if (run.modeId === 'bossrush') return true;
+  if (run.modeId === 'clean') return false;
+  return run.totalRooms === 100 ? (n % 10 === 0) : (n % 5 === 0);
+}
+
 /* ---------- Создание забега ---------- */
 function newRun() {
   resetPreviewKills();
@@ -1417,11 +1450,14 @@ function newRun() {
   choicePendingResume = false;
   debugFreeChoice = false;
   debugFreeInventory = false;
-  const hundred = selectedMode === 'hundred';
+  const modeId = selectedMode;
+  const endless = modeId === 'clean' || modeId === 'bossrush';
+  const hundred = modeId === 'hundred';
   const diff = DIFFICULTIES[selectedDifficulty];
   run = {
+    modeId,
     room: 0,
-    totalRooms: hundred ? 100 : 10,
+    totalRooms: endless ? Infinity : (hundred ? 100 : 10),
     timeScale: hundred ? 1.5 : 1,
     xpDivisor: 1,
     statMul: diff.statMul,
@@ -1474,7 +1510,6 @@ function newRun() {
       mgShake: 0,
       dash: null,
       axeCombo: null,
-      dashSlow: 0,
       stun: 0,
       attackCd: 0,
       invuln: 0,
@@ -1540,7 +1575,7 @@ function enterRoom(n, deferSpawn = false) {
     run.scale.dmg *= growth;
   }
 
-  const isBoss = run.totalRooms === 100 ? (n % 10 === 0) : (n % 5 === 0);
+  const isBoss = isBossRoomNumber(n);
   let count = Math.round(run.scale.count);
   if (isBoss) count = Math.round(count * 0.25); // на 75% меньше мобов
   count = clamp(count, 2, 30);
@@ -1558,8 +1593,9 @@ function enterRoom(n, deferSpawn = false) {
   run.bossRespawnTimer = null;
   run.roomComplete = false;
   run.floorTiles = makeFloor();
-  run.blocks = makeBlocks(isBoss);
-  run.walls = makeWalls(isBoss, run.blocks);
+  const noObstacles = isBoss || isEndlessRun();
+  run.blocks = makeBlocks(noObstacles);
+  run.walls = makeWalls(noObstacles, run.blocks);
   run.obstacles = [...run.blocks, ...run.walls];
 
   const p = run.player;
@@ -1574,7 +1610,6 @@ function enterRoom(n, deferSpawn = false) {
   p.mgShake = 0;
   p.dash = null;
   p.axeCombo = null;
-  p.dashSlow = 0;
   p.stun = 0;
   if (run.healOnRoom) p.hp = p.maxHp; // полное лечение на новой комнате, кроме сверхтяжёлого режима
 
@@ -1596,7 +1631,13 @@ function enterRoom(n, deferSpawn = false) {
 
 function spawnBoss(level) {
   let hp, damage;
-  if (run.totalRooms === 100) {
+  if (run.modeId === 'bossrush') {
+    // Боссинг: босс в каждой комнате. 750 HP и 30 урона в первой комнате,
+    // дальше +25% HP и +15% урона за комнату; раз в 10 комнат цикл сбрасывается.
+    const step = ((level - 1) % 10) + 1;
+    hp = Math.round(750 * Math.pow(1.25, step - 1));
+    damage = Math.round(30 * Math.pow(1.15, step - 1));
+  } else if (run.totalRooms === 100) {
     // Боссы на каждой 10-й комнате: 1000 HP / 50 урона,
     // каждый следующий сильнее в 1,5 раза, на 100-й — сброс к первому.
     const index = level === 100 ? 1 : level / 10;
@@ -1686,13 +1727,13 @@ function spawnBatch(amount) {
 
 /* ---------- Боевые действия ---------- */
 // Параметры ближнего оружия: half — полуугол сектора, push — сила отбрасывания,
-// dmgMul — множитель урона одного удара относительно обычного ближнего боя
+// dmgMul — множитель урона одного удара относительно базового урона игрока
 const MELEE = {
   // Ближний бой: базовый интервал 0,5 с делён на 1,5 — скорость атаки ×1,5.
   // Сектор сужен ещё вдвое — до ~45° (восьмая круга), дальность осталась увеличенной.
-  melee:  { reach: 96,  half: Math.PI / 8, cd: 0.5 / 1.5, push: 170, combo: 1, dmgMul: 1, dash: 0 },
+  melee:  { reach: 96,  half: Math.PI / 8, cd: 0.5 / 1.5, push: 170, combo: 1, dmgMul: 2, dash: 0 },
   axe:    { reach: 105, half: Math.PI, cd: 1.3, push: 640, combo: 3, dmgMul: 0.5, dash: 0 },
-  rapier: { reach: 140, half: 0.34,    cd: 1.2, push: 0,   combo: 1, dmgMul: 0.5, dash: 456, dashTime: 0.55 },
+  rapier: { reach: 140, half: 0.34,    cd: 1.2, push: 0,   combo: 1, dmgMul: 1, dash: 456, dashTime: 0.55 },
 };
 
 // Пулемёт: тряска перед залпом, интервал выстрелов и время стрельбы до перегрева
@@ -1729,8 +1770,8 @@ function meleeStrike(w, aim, targets, hitSet) {
     if (hitSet) hitSet.add(e);
 
     if (w === 'rapier') {
-      // Вместо отбрасывания — оглушение на 2 секунды
-      e.stun = 2;
+      // Вместо отбрасывания — оглушение на 1 секунду
+      e.stun = 1;
     } else {
       const push = cfg.push * (e.type === 'boss' ? 0.2 : 1);
       e.kx += (dx / (dist || 1)) * push;
@@ -2000,11 +2041,9 @@ function update(dt) {
   if (mode !== 'play') return;
   const p = run.player;
   updateTouchAim();
-  p.dashSlow = Math.max(0, p.dashSlow - dt);
   p.stun = Math.max(0, p.stun - dt);
 
-  // Движение игрока: после удара о стену оглушение блокирует движение,
-  // а после обычного рывка рапиры скорость снижена на 30% в течение 2 с
+  // Движение игрока: после удара о стену оглушение блокирует движение
   let dx = 0, dy = 0;
   if (keys.has('w') || keys.has('arrowup')) dy -= 1;
   if (keys.has('s') || keys.has('arrowdown')) dy += 1;
@@ -2014,10 +2053,8 @@ function update(dt) {
   // Во время рывка направление уже зафиксировано: клавиатура не должна его подправлять
   if ((dx || dy) && p.stun <= 0 && !p.dash) {
     const len = Math.hypot(dx, dy);
-    let speed = p.speed;
-    if (p.dashSlow > 0) speed *= 0.7;
-    p.x += (dx / len) * speed * dt;
-    p.y += (dy / len) * speed * dt;
+    p.x += (dx / len) * p.speed * dt;
+    p.y += (dy / len) * p.speed * dt;
   }
   p.x = clamp(p.x, p.r + 8, W - p.r - 8);
   p.y = clamp(p.y, p.r + 8, H - p.r - 8);
@@ -2058,7 +2095,7 @@ function update(dt) {
       const diff = Math.atan2(Math.sin(ea - na), Math.cos(ea - na));
       if (Math.abs(diff) > cfgR.half) continue;
       hitEnemy(e, Math.max(1, Math.round(p.damage * cfgR.dmgMul)));
-      e.stun = 2;
+      e.stun = 1;
       d.hit.add(e);
       burst(e.x, e.y, '#9ffcf8', 7, 120);
     }
@@ -2079,7 +2116,6 @@ function update(dt) {
       run.shake = Math.max(run.shake, 6);
     } else if (d.t >= d.duration) {
       p.dash = null;
-      p.dashSlow = 2; // после рывка игрок замедлен на 30% в течение 2 с
     }
   }
 
@@ -2749,18 +2785,6 @@ function drawPlayer() {
   }
   ctx.globalAlpha = 1;
 
-  // Замедление после рывка рапиры — мерцающее кольцо вокруг игрока
-  if (p.dashSlow > 0) {
-    ctx.save();
-    ctx.strokeStyle = '#9ffcf8';
-    ctx.globalAlpha = 0.3 + 0.25 * Math.max(0, Math.sin(performance.now() / 130));
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r + 13, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-  }
-
   // Оглушение после удара о стену — вращающиеся искры над игроком
   if (p.stun > 0) {
     ctx.save();
@@ -2820,7 +2844,7 @@ function updateHud() {
   $('statSpeed').textContent = `${Math.round((p.speed / BASE_SPEED) * 100)}%`;
   $('statAtkSpeed').textContent = `${Math.round(p.attackSpeed * 100)}%`;
   $('roomNum').textContent = run.room;
-  $('roomTotal').textContent = run.totalRooms;
+  $('roomTotal').textContent = roomTotalLabel();
   $('enemyCounter').textContent = `Врагов: ${run.enemies.length + run.toSpawn}`;
   $('weaponChip').textContent = `ОРУЖИЕ: ${WEAPONS[p.weapon].name}`;
   for (const wid of ['pistol', 'shotgun', 'axe', 'rapier', 'mg']) {
@@ -2842,12 +2866,15 @@ function updateHud() {
 function updateTrack() {
   const track = $('roomTrack');
   track.innerHTML = '';
-  track.classList.toggle('many', run.totalRooms === 100);
-  for (let i = 1; i <= run.totalRooms; i++) {
+  const endless = isEndlessRun();
+  track.classList.toggle('many', run.totalRooms === 100 || endless);
+  // В бесконечном режиме показываем окно из 10 комнат вокруг текущей.
+  const first = endless ? Math.max(1, run.room - 4) : 1;
+  const last = endless ? run.room + 5 : run.totalRooms;
+  for (let i = first; i <= last; i++) {
     const node = document.createElement('div');
     node.className = 'room-node';
-    const isBossRoom = run.totalRooms === 100 ? (i % 10 === 0) : (i % 5 === 0);
-    if (isBossRoom) node.classList.add('boss');
+    if (isBossRoomNumber(i)) node.classList.add('boss');
     if (i < run.room) node.classList.add('done', 'closed');
     else if (i === run.room) node.classList.add('current');
     track.appendChild(node);
@@ -3173,7 +3200,7 @@ function finish(victory) {
   if (levelUps > 0) sfx('levelup');
   persist();
 
-  $('endTitle').textContent = victory ? `ВСЕ ${run.totalRooms} КОМНАТ ПРОЙДЕНЫ!` : 'ТЫ ПОГИБ';
+  $('endTitle').textContent = victory ? `ВСЕ ${roomTotalLabel()} КОМНАТ ПРОЙДЕНЫ!` : 'ТЫ ПОГИБ';
   $('endTitle').className = victory ? 'win' : 'lose';
   const xpNotes = [];
   if (run.xpMul !== 1) xpNotes.push(`Опыт ×${run.xpMul} за сложность.`);
@@ -3183,7 +3210,7 @@ function finish(victory) {
     : gained > 0
       ? `Поражение: вычтено ${Math.round(penalty * 100)}% опыта, удержано ${Math.round((1 - penalty) * 100)}%.${xpNote}`
       : `Поражение: опыт не начислен.${xpNote}`;
-  $('endRooms').textContent = `${victory ? run.totalRooms : run.room - 1} / ${run.totalRooms}`;
+  $('endRooms').textContent = `${victory ? roomTotalLabel() : run.room - 1} / ${roomTotalLabel()}`;
   $('endDealt').textContent = Math.round(run.damageDealt);
   $('endTaken').textContent = Math.round(run.damageTaken);
   const xpEl = $('endXp');
@@ -3694,7 +3721,7 @@ function syncGameDebugPanel() {
     return;
   }
   const p = run.player;
-  $('gdpRoom').textContent = `КОМНАТА ${run.room}/${run.totalRooms}`;
+  $('gdpRoom').textContent = `КОМНАТА ${run.room}/${roomTotalLabel()}`;
   $('gdpDamageVal').textContent = Math.round(p.damage);
   $('gdpSpeedVal').textContent = Math.round(p.speed);
   $('gdpHealthVal').textContent = `${Math.ceil(p.hp)}/${p.maxHp}`;

@@ -1168,17 +1168,17 @@ html.touch .attack-btn:active { opacity: .8; }
   .btn.menu-action { font-size: 14px; letter-spacing: 1px; }
   .menu-right { padding-top: 0; justify-content: flex-end; }
   .enemy-preview { flex: none; height: 200px; }
-  .setup-panel { top: 96px; padding: 8px; gap: 6px; }
+  .setup-panel { top: 86px; padding: 8px; gap: 4px; overflow-y: auto; overscroll-behavior: contain; }
   .setup-title { font-size: 10px; }
   .mode-select { gap: 6px; }
-  .mode-card { padding: 6px 8px; }
+  .mode-card { padding: 4px 8px; }
   .mode-title { font-size: 10px; }
-  .mode-desc { font-size: 9px; margin-top: 2px; }
+  .mode-desc { font-size: 9px; margin-top: 1px; }
   .diff-label { font-size: 9px; margin-bottom: 4px; }
   .diff-buttons { gap: 4px; }
   .diff-btn { font-size: 8px; padding: 6px 1px; }
   .setup-actions { gap: 6px; }
-  .setup-actions .btn { height: 34px; font-size: 11px; }
+  .setup-actions .btn { height: 30px; font-size: 11px; }
   .profile.menu-xp { height: 46px; padding: 5px 10px; gap: 4px; }
   .menu-xp .xp-info { gap: 8px; }
   .menu-xp .badge-level { height: 26px; padding: 0 8px; gap: 6px; }
