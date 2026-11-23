@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 SAVE_FILE = ROOT / "save.json"
-DEFAULT_SAVE = {"level": 1, "xp": 0}
+DEFAULT_SAVE = {"level": 1, "xp": 0, "lang": "en", "seenNotices": []}
 
 
 def normalize_save(data):
@@ -20,7 +20,20 @@ def normalize_save(data):
         xp = int(data.get("xp", 0))
     except (TypeError, ValueError):
         xp = 0
-    return {"level": max(1, level), "xp": max(0, xp)}
+    try:
+        lang = data.get("lang")
+    except AttributeError:
+        lang = None
+    if lang not in ("ru", "en"):
+        lang = "en"
+    try:
+        seen = data.get("seenNotices", [])
+    except AttributeError:
+        seen = []
+    if not isinstance(seen, list):
+        seen = []
+    seen = list(dict.fromkeys(str(item) for item in seen if isinstance(item, str)))
+    return {"level": max(1, level), "xp": max(0, xp), "lang": lang, "seenNotices": seen}
 
 
 def read_save():

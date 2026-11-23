@@ -21,6 +21,7 @@ const touchMove = { active: false, x: 0, y: 0, id: null, cx: 0, cy: 0 };
 const screens = {
   menu: $('menu'),
   info: $('infoScreen'),
+  settings: $('settingsScreen'),
   game: $('gameScreen'),
   choice: $('choiceScreen'),
   inventory: $('inventoryScreen'),
@@ -49,6 +50,8 @@ const COLLISION_EPS = 0.01;  // погрешность округления пр
 
 const SAVE_KEY = 'ten_rooms_save_v1';
 const SOUND_KEY = 'ten_rooms_sound_v1';
+const NOTICE_ID_VERSION = 'version-panel';
+let pendingNoticeDismiss = false;
 
 // Сложность задаёт параметры врагов и правила волн.
 const DIFFICULTIES = {
@@ -76,9 +79,14 @@ let saveSource = 'local';
 let saveLoading = true;
 
 function normalizeSave(data) {
+  const seenNotices = data && Array.isArray(data.seenNotices)
+    ? [...new Set(data.seenNotices.filter(id => typeof id === 'string'))]
+    : [];
   return {
     level: Math.max(1, Math.floor(Number(data && data.level) || 1)),
     xp: Math.max(0, Math.floor(Number(data && data.xp) || 0)),
+    lang: data && data.lang === 'ru' ? 'ru' : 'en',
+    seenNotices,
   };
 }
 
@@ -87,7 +95,7 @@ function loadSave() {
     const raw = localStorage.getItem(SAVE_KEY);
     if (raw) return normalizeSave(JSON.parse(raw));
   } catch (e) { /* localStorage может быть недоступен */ }
-  return { level: 1, xp: 0 };
+  return { level: 1, xp: 0, lang: 'en', seenNotices: [] };
 }
 
 function persistLocal() {
@@ -100,9 +108,21 @@ async function loadServerSave() {
     if (res.ok) {
       save = normalizeSave(await res.json());
       saveSource = 'server';
+      // Если уведомление закрыли до загрузки серверного сохранения — не показываем его снова.
+      if (pendingNoticeDismiss) {
+        if (!save.seenNotices.includes(NOTICE_ID_VERSION)) save.seenNotices.push(NOTICE_ID_VERSION);
+        pendingNoticeDismiss = false;
+        persist();
+      }
+      // Язык из сохранения — такой же постоянный параметр, как уровень.
+      if (window.I18N && I18N.getLanguage() !== save.lang) I18N.setLanguage(save.lang);
       refreshMenu();
+      applyNotices();
     }
-  } catch (e) { /* сервер недоступен — остаётся localStorage */ }
+  } catch (e) {
+    /* сервер недоступен — остаётся localStorage */
+    if (window.I18N && I18N.getLanguage() !== save.lang) I18N.setLanguage(save.lang);
+  }
   finally {
     saveLoading = false;
     updateSaveLoadingUI();
@@ -120,6 +140,22 @@ function persist() {
   }).catch(() => {});
 }
 
+// Уведомления об обновлениях живут в сохранении и показываются один раз.
+function applyNotices() {
+  const show = !save.seenNotices.includes(NOTICE_ID_VERSION);
+  $('settingsBtn').classList.toggle('has-notice', show);
+  $('versionNotice').classList.toggle('has-notice', show);
+}
+
+function dismissVersionNotice() {
+  if (!save.seenNotices.includes(NOTICE_ID_VERSION)) {
+    save.seenNotices.push(NOTICE_ID_VERSION);
+    if (saveLoading) pendingNoticeDismiss = true;
+    persist();
+  }
+  applyNotices();
+}
+
 function updateSaveLoadingUI() {
   const btn = $('playBtn');
   if (!btn) return;
@@ -130,6 +166,7 @@ function updateSaveLoadingUI() {
 let save = loadSave();
 let selectedMode = 'normal'; // normal | hundred
 let selectedDifficulty = 'normal'; // easy | normal | hard | ultra
+let selectedLanguage = save.lang; // ru | en — берём из сохранения, как и уровень
 let debugGodMode = false;
 let debugFullControl = false;
 let mode = 'menu';        // menu | intro | spawn | play | choice | inventory | end
@@ -381,6 +418,7 @@ window.addEventListener('keydown', unlockAudio, { once: true });
 function showBase(name) {
   screens.menu.classList.toggle('active', name === 'menu');
   screens.info.classList.toggle('active', name === 'info');
+  screens.settings.classList.toggle('active', name === 'settings');
   screens.game.classList.toggle('active', name === 'game');
 }
 
@@ -393,7 +431,7 @@ function syncWindowSize() {
   if (!wasActive) {
     // В мобильной раскладке экраны — flex-элементы: остальные надо убрать,
     // иначе игровой экран получит неполную высоту контейнера
-    for (const el of [screens.menu, screens.info]) {
+    for (const el of [screens.menu, screens.info, screens.settings]) {
       if (el.classList.contains('active')) { el.classList.remove('active'); hidden.push(el); }
     }
     game.classList.add('active');
@@ -419,6 +457,14 @@ const pctx = previewCanvas.getContext('2d');
 let previewW = 0;
 let previewH = 0;
 let previewEnemies = [];
+const previewParticles = [];
+const PREVIEW_BASE_COUNT = 7;
+const PREVIEW_MAX_ENEMIES = 140;
+const PREVIEW_MAX_KILLS = 50;
+const PREVIEW_IDLE_SECONDS = 15;
+let previewKills = 0;
+let previewIdleTimer = 0;
+let previewSpawnBlocked = false;
 
 function resizePreviewCanvas() {
   const rect = previewCanvas.getBoundingClientRect();
@@ -431,8 +477,8 @@ function resizePreviewCanvas() {
   previewCanvas.width = Math.round(w * dpr);
   previewCanvas.height = Math.round(h * dpr);
   pctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  if (!previewEnemies.length) {
-    for (let i = 0; i < 7; i++) previewEnemies.push(makePreviewEnemy(true));
+  if (!previewSpawnBlocked && !previewEnemies.length) {
+    for (let i = 0; i < PREVIEW_BASE_COUNT; i++) previewEnemies.push(makePreviewEnemy(true));
   }
 }
 
@@ -459,6 +505,8 @@ function makePreviewEnemy(initial = false) {
     boss: Math.random() < 0.16,
     phase: rand(0, Math.PI * 2),
     spawnAnim: 0.45,
+    dead: false,
+    deathAnim: 0,
     delay: initial ? rand(0, 0.8) : rand(0.25, 1.5),
   };
 }
@@ -527,11 +575,113 @@ function drawPreviewEnemy(e) {
   pctx.restore();
 }
 
+function spawnPreviewParticles(x, y, boss, big = false) {
+  const count = big ? (boss ? 42 : 30) : (boss ? 20 : 12);
+  for (let i = 0; i < count; i++) {
+    const a = rand(0, Math.PI * 2);
+    const sp = big ? rand(80, 250) : rand(40, 150);
+    const life = big ? rand(0.5, 1.1) : rand(0.3, 0.7);
+    previewParticles.push({
+      x, y,
+      vx: Math.cos(a) * sp,
+      vy: Math.sin(a) * sp,
+      life, maxLife: life,
+      size: big ? rand(2, 5) : rand(1.5, 3.5),
+      color: big ? (boss ? '#ffcc66' : '#ff5c8a') : (boss ? '#ff5c8a' : '#b49bff'),
+    });
+  }
+}
+
+function drawPreviewDeath(e) {
+  const k = clamp(e.deathAnim / (previewSpawnBlocked ? 0.8 : 0.42), 0, 1);
+  pctx.save();
+  pctx.translate(e.x, e.y);
+  pctx.globalAlpha = 1 - k;
+  pctx.strokeStyle = e.boss ? '#ff5c8a' : '#b49bff';
+  pctx.lineWidth = 2 * (1 - k) + 0.5;
+  pctx.beginPath();
+  pctx.arc(0, 0, e.r * (1 + k * 1.4), 0, Math.PI * 2);
+  pctx.stroke();
+  pctx.restore();
+}
+
+function previewTargetCount() {
+  let n = PREVIEW_BASE_COUNT;
+  for (let i = 0; i < previewKills; i++) n = Math.ceil(n * 1.5);
+  return Math.min(n, PREVIEW_MAX_ENEMIES);
+}
+
+function resetPreviewKills() {
+  previewKills = 0;
+  previewIdleTimer = 0;
+  previewSpawnBlocked = false;
+  previewParticles.length = 0;
+  previewEnemies = [];
+  for (let i = 0; i < PREVIEW_BASE_COUNT; i++) previewEnemies.push(makePreviewEnemy(true));
+}
+
+function triggerPreviewFinale() {
+  if (previewSpawnBlocked) return;
+  previewSpawnBlocked = true;
+  for (const e of previewEnemies) {
+    if (e.dead) continue;
+    e.dead = true;
+    e.deathAnim = 0;
+    spawnPreviewParticles(e.x, e.y, e.boss, true);
+  }
+  sfx('explosion');
+}
+
+// Клик по обитателю окна в главном меню убивает его (счётчик скрыт от игрока).
+function killPreviewEnemyAt(clientX, clientY) {
+  const rect = previewCanvas.getBoundingClientRect();
+  const x = clientX - rect.left;
+  const y = clientY - rect.top;
+  let hit = null;
+  for (let i = previewEnemies.length - 1; i >= 0; i--) {
+    const e = previewEnemies[i];
+    if (e.dead || e.delay > 0) continue;
+    const reach = e.r + 9;
+    if ((x - e.x) ** 2 + (y - e.y) ** 2 <= reach * reach) { hit = e; break; }
+  }
+  if (!hit) return;
+  previewKills = Math.min(PREVIEW_MAX_KILLS, previewKills + 1);
+  previewIdleTimer = 0;
+  hit.dead = true;
+  hit.deathAnim = 0;
+  spawnPreviewParticles(hit.x, hit.y, hit.boss, previewKills >= PREVIEW_MAX_KILLS);
+  sfx('hit');
+  if (previewKills >= PREVIEW_MAX_KILLS) triggerPreviewFinale();
+}
+previewCanvas.addEventListener('pointerdown', (e) => killPreviewEnemyAt(e.clientX, e.clientY));
+
+function syncPreviewEnemyCount() {
+  if (previewSpawnBlocked) {
+    previewEnemies = previewEnemies.filter(e => e.deathAnim < 0.8);
+    return;
+  }
+  const target = previewTargetCount();
+  while (previewEnemies.length < target) previewEnemies.push(makePreviewEnemy(false));
+  while (previewEnemies.length > target) previewEnemies.pop();
+}
+
 function updateMenuPreview(dt) {
+  // После финала (50) простой не сбрасывает счётчик — только выход в меню/игру.
+  if (previewKills > 0 && !previewSpawnBlocked) {
+    previewIdleTimer += dt;
+    if (previewIdleTimer >= PREVIEW_IDLE_SECONDS) resetPreviewKills();
+  }
   resizePreviewCanvas();
+  syncPreviewEnemyCount();
   pctx.clearRect(0, 0, previewW, previewH);
   drawPreviewGrid();
   for (const e of previewEnemies) {
+    if (e.dead) {
+      e.deathAnim += dt;
+      drawPreviewDeath(e);
+      if (!previewSpawnBlocked && e.deathAnim >= 0.5) Object.assign(e, makePreviewEnemy(false));
+      continue;
+    }
     if (e.delay > 0) { e.delay -= dt; continue; }
     e.spawnAnim = Math.max(0, e.spawnAnim - dt);
     e.x += e.vx * e.speed * dt;
@@ -542,12 +692,30 @@ function updateMenuPreview(dt) {
     }
     drawPreviewEnemy(e);
   }
+  for (let i = previewParticles.length - 1; i >= 0; i--) {
+    const p = previewParticles[i];
+    p.life -= dt;
+    if (p.life <= 0) { previewParticles.splice(i, 1); continue; }
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vx *= 0.96;
+    p.vy *= 0.96;
+  }
+  for (const p of previewParticles) {
+    pctx.globalAlpha = clamp(p.life / p.maxLife, 0, 1);
+    pctx.fillStyle = p.color;
+    pctx.beginPath();
+    pctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    pctx.fill();
+  }
+  pctx.globalAlpha = 1;
 }
 
 // Анимированный переход между главным меню и энциклопедией
 let baseSwitchTimer = null;
 function animateBaseSwitch(from, to, direction) {
   if (baseSwitchTimer) return;
+  resetPreviewKills();
   const fromEl = screens[from];
   const toEl = screens[to];
   const leave = direction === 'forward' ? 'base-leave-left' : 'base-leave-right';
@@ -598,6 +766,7 @@ function finishIntroFade() {
 }
 
 function showOverlay(name) {
+  if (name) resetPreviewKills();
   // Иначе фокус останется на скрытом поле ввода и заблокирует WASD/горячие клавиши
   const active = document.activeElement;
   if (active && active.tagName === 'INPUT' && !(name === 'debug' && active === $('debugXpInput'))) active.blur();
@@ -1225,6 +1394,7 @@ function pushOutOfBlocks(o) {
 
 /* ---------- Создание забега ---------- */
 function newRun() {
+  resetPreviewKills();
   if (choiceTimer) { clearTimeout(choiceTimer); choiceTimer = null; }
   pausedFrom = null;
   choicePendingResume = false;
@@ -2613,7 +2783,7 @@ function drawBossBar() {
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 12px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(`БОСС · ${run.boss.damage} УРОНА · ${Math.ceil(run.boss.hp)} / ${run.boss.maxHp} HP`, W / 2, y + bh + 17);
+  ctx.fillText(I18N.t(`БОСС · ${run.boss.damage} УРОНА · ${Math.ceil(run.boss.hp)} / ${run.boss.maxHp} HP`), W / 2, y + bh + 17);
 }
 
 /* ---------- HUD ---------- */
@@ -3015,6 +3185,7 @@ function finish(victory) {
 }
 
 function returnToMenu() {
+  resetPreviewKills();
   if (endTimer) { clearInterval(endTimer); endTimer = null; }
   if (choiceTimer) { clearTimeout(choiceTimer); choiceTimer = null; }
   if (introTimer) { clearTimeout(introTimer); introTimer = null; }
@@ -3082,6 +3253,12 @@ window.addEventListener('keydown', (e) => {
   const k = keyCode(e);
   keys.add(k);
   if (['space', 'escape', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault();
+
+  // Esc сворачивает развёрнутую кнопку версии, не открывая паузу
+  if (k === 'escape' && $('versionBtn').classList.contains('expanded')) {
+    collapseVersion();
+    return;
+  }
 
   // Esc закрывает выезжающее меню выбора, если оно открыто
   if (k === 'escape' && mode === 'menu' && document.querySelector('.menu-card').classList.contains('setup-open')) {
@@ -3348,6 +3525,47 @@ $('infoExitBtn').addEventListener('click', () => {
   animateBaseSwitch('info', 'menu', 'back');
   refreshMenu();
 });
+$('settingsBtn').addEventListener('click', () => {
+  showOverlay(null);
+  closeSetup();
+  collapseVersion();
+  animateBaseSwitch('menu', 'settings', 'forward');
+});
+$('settingsExitBtn').addEventListener('click', () => {
+  collapseVersion();
+  animateBaseSwitch('settings', 'menu', 'back');
+  refreshMenu();
+});
+
+// Кнопка версии разворачивается в прокручиваемую панель прямо на месте.
+function expandVersion() {
+  const btn = $('versionBtn');
+  const rect = btn.getBoundingClientRect();
+  // ×1.5 по ширине и ×5 по высоте; центрирование и ограничение ширины делает CSS.
+  btn.style.width = `${rect.width * 1.5}px`;
+  btn.style.height = `${rect.height * 5}px`;
+  btn.style.maxWidth = '';
+  $('versionNotice').classList.add('expanded');
+  btn.classList.add('expanded');
+  btn.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+function collapseVersion() {
+  const btn = $('versionBtn');
+  if (!btn.classList.contains('expanded')) return;
+  btn.classList.remove('expanded');
+  $('versionNotice').classList.remove('expanded');
+  btn.style.width = '';
+  btn.style.height = '';
+}
+$('versionBtn').addEventListener('click', (e) => {
+  if (e.target.closest('#versionContent')) return;
+  dismissVersionNotice();
+  if ($('versionBtn').classList.contains('expanded')) collapseVersion();
+  else expandVersion();
+});
+// Прокрутка текста не должна сворачивать панель
+$('versionContent').addEventListener('click', (e) => e.stopPropagation());
+$('versionContent').addEventListener('pointerdown', (e) => e.stopPropagation());
 $('debugBack').addEventListener('click', () => showOverlay(debugReturn === 'pause' ? 'pause' : null));
 $('godToggle').addEventListener('click', () => {
   debugGodMode = !debugGodMode;
@@ -3512,7 +3730,8 @@ $('cancelReset').addEventListener('click', () => {
   confirmReturn = null;
 });
 $('confirmReset').addEventListener('click', () => {
-  save = { level: 1, xp: 0 };
+  // язык и просмотренные уведомления сохраняем при сбросе уровня
+  save = { level: 1, xp: 0, lang: save.lang, seenNotices: [...save.seenNotices] };
   persist();
   refreshMenu();
   showOverlay(confirmReturn);
@@ -3533,13 +3752,36 @@ $('confirmExit').addEventListener('click', () => {
   fadeOutTo(returnToMenu);
 });
 
-// Выбор режима игры
-document.querySelectorAll('.mode-card').forEach((card) => {
+// Выбор режима игры (только карточки самого меню режимов)
+document.querySelectorAll('#modeSelect .mode-card').forEach((card) => {
   card.addEventListener('click', () => {
     selectedMode = card.dataset.mode;
-    document.querySelectorAll('.mode-card').forEach((c) => c.classList.toggle('active', c === card));
+    document.querySelectorAll('#modeSelect .mode-card').forEach((c) => c.classList.toggle('active', c === card));
   });
 });
+
+// Выбор языка интерфейса: карточки следуют за I18N, язык пишется в save.json.
+function applyLanguageCards() {
+  selectedLanguage = I18N.getLanguage();
+  document.querySelectorAll('#langSelect .mode-card').forEach((c) => {
+    c.classList.toggle('active', c.dataset.lang === selectedLanguage);
+  });
+  $('langHint').textContent = selectedLanguage === 'en'
+    ? 'Интерфейс на английском языке.'
+    : 'Интерфейс на русском языке.';
+}
+function syncLanguageUI() {
+  applyLanguageCards();
+  // Пока сохранение не загрузилось, не перезаписываем язык из save.json.
+  if (!saveLoading) {
+    save.lang = I18N.getLanguage();
+    persist();
+  }
+}
+document.querySelectorAll('#langSelect .mode-card').forEach((card) => {
+  card.addEventListener('click', () => I18N.setLanguage(card.dataset.lang));
+});
+window.addEventListener('languagechange', syncLanguageUI);
 
 // Выбор сложности (правила волн и параметры врагов)
 document.querySelectorAll('.diff-btn').forEach((btn) => {
@@ -3551,11 +3793,13 @@ document.querySelectorAll('.diff-btn').forEach((btn) => {
 
 /* ---------- Старт ---------- */
 buildInfoScreen();
+syncLanguageUI();
 syncDebugToggles();
 syncSoundButtons();
 updateSaveLoadingUI();
 loadServerSave();
 refreshMenu();
+applyNotices();
 showBase('menu');
 syncWindowSize();
 requestAnimationFrame(loop);

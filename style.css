@@ -54,19 +54,24 @@ body { display: flex; justify-content: center; padding: 24px 14px; }
 @keyframes baseEnterRight { from { opacity: 0; transform: translateX(34px) scale(.985); } to { opacity: 1; transform: none; } }
 
 #menu.base-leave-left .menu-card,
-#infoScreen.base-leave-left > * { animation: baseLeaveLeft .26s ease forwards; }
+#infoScreen.base-leave-left > *, #settingsScreen.base-leave-left > * { animation: baseLeaveLeft .26s ease forwards; }
 #menu.base-leave-right .menu-card,
-#infoScreen.base-leave-right > * { animation: baseLeaveRight .26s ease forwards; }
+#infoScreen.base-leave-right > *, #settingsScreen.base-leave-right > * { animation: baseLeaveRight .26s ease forwards; }
 #menu.base-enter-left .menu-card,
-#infoScreen.base-enter-left > * { animation: baseEnterLeft .42s cubic-bezier(.2,.9,.2,1) both; }
+#infoScreen.base-enter-left > *, #settingsScreen.base-enter-left > * { animation: baseEnterLeft .42s cubic-bezier(.2,.9,.2,1) both; }
 #menu.base-enter-right .menu-card,
-#infoScreen.base-enter-right > * { animation: baseEnterRight .42s cubic-bezier(.2,.9,.2,1) both; }
+#infoScreen.base-enter-right > *, #settingsScreen.base-enter-right > * { animation: baseEnterRight .42s cubic-bezier(.2,.9,.2,1) both; }
 
 @media (prefers-reduced-motion: reduce) {
   #menu.base-leave-left .menu-card, #menu.base-leave-right .menu-card,
   #infoScreen.base-leave-left > *, #infoScreen.base-leave-right > *,
+  #settingsScreen.base-leave-left > *, #settingsScreen.base-leave-right > *,
   #menu.base-enter-left .menu-card, #menu.base-enter-right .menu-card,
-  #infoScreen.base-enter-left > *, #infoScreen.base-enter-right > * { animation: none; }
+  #infoScreen.base-enter-left > *, #infoScreen.base-enter-right > *,
+  #settingsScreen.base-enter-left > *, #settingsScreen.base-enter-right > * { animation: none; }
+  .version-btn, .version-btn::after, .version-title, .version-value { transition: none; }
+  .btn.has-notice, .notice-anchor.has-notice .btn,
+  .btn.has-notice::before, .notice-anchor.has-notice::before { animation: none; }
 }
 
 /* Затемнение экрана при входе в игру и выходе из неё */
@@ -142,6 +147,7 @@ body { display: flex; justify-content: center; padding: 24px 14px; }
 .menu-left, .menu-right { min-width: 0; display: flex; flex-direction: column; }
 .menu-left { position: relative; }
 .menu-left .title-wrap { margin-top: auto; margin-bottom: 24px; }
+.title-wrap { transition: opacity .25s ease, transform .35s ease; }
 .title-wrap h1 {
   margin: 0;
   font-size: 90px;
@@ -157,6 +163,12 @@ body { display: flex; justify-content: center; padding: 24px 14px; }
   transition: opacity .25s ease, transform .35s ease;
 }
 .menu-card.setup-open .menu-actions {
+  opacity: 0;
+  transform: translateX(-28px);
+  pointer-events: none;
+}
+/* На телефоне заголовок уезжает и возвращается вместе с кнопками меню */
+html.touch .menu-card.setup-open .title-wrap {
   opacity: 0;
   transform: translateX(-28px);
   pointer-events: none;
@@ -245,7 +257,7 @@ body { display: flex; justify-content: center; padding: 24px 14px; }
   box-shadow: inset 0 0 50px rgba(0,0,0,.55), 0 0 26px rgba(78,226,224,.05);
   user-select: none;
 }
-.enemy-preview canvas { display: block; width: 100%; height: 100%; }
+.enemy-preview canvas { display: block; width: 100%; height: 100%; cursor: default; }
 .enemy-preview::before {
   content: 'ОБИТАТЕЛИ';
   position: absolute;
@@ -258,6 +270,7 @@ body { display: flex; justify-content: center; padding: 24px 14px; }
   color: rgba(180,155,255,.6);
   pointer-events: none;
 }
+html[lang="en"] .enemy-preview::before { content: 'INHABITANTS'; }
 .enemy-preview::after {
   content: '';
   position: absolute;
@@ -332,6 +345,30 @@ body { display: flex; justify-content: center; padding: 24px 14px; }
 .btn:hover { transform: translateY(-2px); filter: brightness(1.08); }
 .btn:active { transform: translateY(0); }
 .btn:disabled { opacity: .45; cursor: wait; transform: none; filter: grayscale(.5); }
+
+/* Уведомления об обновлениях: красная точка над кнопкой и мягкая пульсация */
+@keyframes noticePulse {
+  0%, 100% { filter: brightness(1.12); box-shadow: 0 0 0 0 rgba(255,92,138,.3); }
+  50% { filter: brightness(1.6); box-shadow: 0 0 0 2px rgba(255,92,138,.35), 0 0 22px rgba(255,92,138,.5); }
+}
+.btn.has-notice,
+.notice-anchor.has-notice .btn { position: relative; animation: noticePulse 1.5s ease-in-out infinite; }
+.notice-anchor { position: relative; width: 100%; max-width: 560px; }
+.notice-anchor.expanded { max-width: none; }
+.btn.has-notice::before,
+.notice-anchor.has-notice::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  right: 12px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ff3b5c;
+  box-shadow: 0 0 0 3px var(--bg), 0 0 12px rgba(255,59,92,.9);
+  pointer-events: none;
+  z-index: 6;
+}
 .btn-primary {
   color: #0c1020;
   background: linear-gradient(100deg, var(--cyan), #7ef0c0);
@@ -699,6 +736,25 @@ body.pause-debug-open .game-debug-panel { z-index: 60; }
   font-size: 20px;
   letter-spacing: 1.5px;
 }
+/* Нижняя кнопка меню разделена на две равные половины: звук и настройки */
+.menu-action-split {
+  height: var(--menu-control-h);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.menu-action-split .btn {
+  height: 100%;
+  margin: 0;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  font-size: 16px;
+  letter-spacing: 1px;
+}
+.menu-action-split .sound-toggle { margin-top: 0; }
 
 /* ---------- ЭНЦИКЛОПЕДИЯ / МЕНЮ ИНФО ---------- */
 .info-menu-btn, .debug-menu-btn {
@@ -709,7 +765,89 @@ body.pause-debug-open .game-debug-panel { z-index: 60; }
   padding: 11px;
 }
 .debug-menu-btn { font-size: 11px; }
-.info-screen { padding: 0; }
+.info-screen, .settings-screen { padding: 0; }
+.settings-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-top: 4px; }
+.settings-body .mode-select { max-width: 560px; }
+.lang-hint { margin-top: 12px; color: var(--muted); font-size: 12px; letter-spacing: .5px; }
+.version-btn {
+  position: relative;
+  width: 100%;
+  height: 58px;
+  max-width: 560px;
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  text-align: left;
+  letter-spacing: 1px;
+  overflow: hidden;
+  transition: width .5s cubic-bezier(.2,.9,.2,1), height .5s cubic-bezier(.2,.9,.2,1),
+              transform .5s cubic-bezier(.2,.9,.2,1), max-width .5s;
+}
+.version-title, .version-value {
+  flex: none;
+  transform-origin: top left;
+  transition: transform .5s cubic-bezier(.2,.9,.2,1);
+}
+.version-title { color: #fff; }
+.version-value { color: var(--muted); font-size: 10px; font-weight: 500; letter-spacing: .5px; }
+.version-collapse {
+  display: none;
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 400;
+}
+.version-btn::after {
+  content: '';
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 60px;
+  height: 1px;
+  background: var(--line);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .3s ease;
+}
+.version-btn.expanded::after { opacity: 1; }
+.version-content {
+  display: none;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px 10px;
+  color: var(--muted);
+  background: rgba(255,255,255,.03);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-word;
+  scrollbar-width: thin;
+  cursor: text;
+}
+.version-btn.expanded,
+.version-btn.expanded:hover,
+.version-btn.expanded:active { transform: none; }
+.version-btn.expanded {
+  max-width: calc(100% - 8px);
+  margin-left: auto;
+  margin-right: auto;
+}
+.version-btn.expanded .version-title,
+.version-btn.expanded .version-value { transform: scale(1.5); }
+.version-btn.expanded .version-collapse { display: block; }
+.version-btn.expanded .version-content { display: block; margin-top: 18px; }
 .info-exit {
   position: fixed;
   left: 18px;
@@ -1058,6 +1196,7 @@ html.touch .attack-btn:active { opacity: .8; }
   .info-layout { grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); grid-template-rows: none; }
   .info-list, .info-detail { padding: 8px; }
   .info-exit { left: 10px; top: 10px; padding: 7px 10px; font-size: 9px; }
+  .lang-hint { margin-top: 8px; font-size: 10px; }
   .info-item { font-size: 11px; padding: 6px 8px; margin-bottom: 4px; }
 
   .screen.overlay { padding: 8px; }
