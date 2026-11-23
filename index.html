@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Roooms — 2D Roguelike</title>
+  <meta name="application-name" content="Roooms">
+  <meta name="theme-color" content="#0a0b14">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="64x64" href="favicon.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- МЕНЮ -->
+    <section id="menu" class="screen active">
+      <div class="menu-card">
+        <div class="menu-decor" aria-hidden="true">
+          <div class="menu-decor-row"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="menu-decor-row"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="menu-decor-row"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+
+        <div class="menu-layout">
+          <div class="menu-top">
+            <div class="menu-left">
+              <div class="title-wrap">
+                <h1><span>Roooms</span></h1>
+              </div>
+
+              <div class="menu-actions">
+                <button id="playBtn" class="btn btn-primary menu-action" type="button">ИГРАТЬ</button>
+                <button id="infoBtn" class="btn btn-cancel menu-action" type="button">ЭНЦИКЛОПЕДИЯ</button>
+                <button id="soundBtn" class="btn btn-cancel sound-toggle menu-action" type="button">ЗВУК: ВКЛ</button>
+              </div>
+
+              <div id="setupPanel" class="setup-panel" aria-hidden="true">
+                <div class="setup-title">ВЫБОР РЕЖИМА И СЛОЖНОСТИ</div>
+
+                <div class="mode-select" id="modeSelect">
+                  <button class="mode-card active" data-mode="normal" type="button">
+                    <span class="mode-title">ОБЫЧНЫЙ</span>
+                    <span class="mode-desc">10 комнат</span>
+                  </button>
+                  <button class="mode-card" data-mode="hundred" type="button">
+                    <span class="mode-title">100 КОМНАТ</span>
+                    <span class="mode-desc">скорость ×1,5</span>
+                  </button>
+                </div>
+
+                <div class="difficulty-select" id="difficultySelect">
+                  <span class="diff-label">СЛОЖНОСТЬ</span>
+                  <div class="diff-buttons">
+                    <button class="diff-btn" data-diff="easy" type="button">ЛЕГКИЙ</button>
+                    <button class="diff-btn active" data-diff="normal" type="button">ОБЫЧНЫЙ</button>
+                    <button class="diff-btn" data-diff="hard" type="button">СЛОЖНЫЙ</button>
+                    <button class="diff-btn" data-diff="ultra" type="button">СВЕРХТЯЖЁЛЫЙ</button>
+                  </div>
+                </div>
+
+                <div class="setup-actions">
+                  <button id="startRunBtn" class="btn btn-primary" type="button">НАЧАТЬ</button>
+                  <button id="setupBackBtn" class="btn btn-cancel" type="button">НАЗАД</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="menu-right">
+              <div id="enemyPreview" class="enemy-preview" aria-hidden="true">
+                <canvas id="previewCanvas"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div class="profile menu-xp">
+            <div class="xp-info">
+              <div class="badge-level">
+                <span id="menuLevel" class="badge-value">1</span>
+                <span class="badge-label">УРОВЕНЬ</span>
+              </div>
+              <div class="xp-text">
+                <div class="xp-top">
+                  <span id="menuXpLabel">ОПЫТ | До следующего уровня 1000 XP</span>
+                  <span id="menuXpText">0 / 1000</span>
+                </div>
+              </div>
+            </div>
+            <div class="xp-bar"><div id="menuXpFill" class="xp-fill"></div></div>
+          </div>
+        </div>
+
+        <div class="controls menu-hints">
+          <span class="desktop-only"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / стрелки — движение</span>
+          <span class="desktop-only"><kbd>ЛКМ</kbd> или <kbd>Пробел</kbd> — удар / выстрел (можно зажимать)</span>
+          <span class="touch-only">Джойстик — движение · кнопка АТАКА — удар</span>
+          <span><span class="dot dot-cyan"></span> Здоровье восстанавливается +5/сек</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ЭНЦИКЛОПЕДИЯ / МЕНЮ ИНФО -->
+    <section id="infoScreen" class="screen info-screen">
+      <button id="infoExitBtn" class="btn btn-cancel info-exit" type="button">← ВЫХОД</button>
+      <div class="info-card">
+        <div class="info-head">
+          <h2>ЭНЦИКЛОПЕДИЯ</h2>
+          <p>МЕНЮ ИНФО · выбери объект слева, чтобы увидеть подробное описание</p>
+        </div>
+        <div class="info-layout">
+          <div id="infoList" class="info-list"></div>
+          <div id="infoDetail" class="info-detail">
+            <div class="info-placeholder">ВЫБЕРИТЕ ОБЪЕКТ</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ИГРА -->
+    <section id="gameScreen" class="screen">
+      <div class="game-top">
+        <div class="hud-left">
+          <div class="hp-line">
+            <span class="hp-label">HP</span>
+            <div class="hp-bar"><div id="hpFill" class="hp-fill"></div></div>
+            <span id="hpText" class="hp-text">100 / 100</span>
+          </div>
+          <div class="stat-chips">
+            <span class="chip">УРОН <b id="statDamage">10</b></span>
+            <span class="chip">СКОРОСТЬ <b id="statSpeed">100%</b></span>
+            <span class="chip">СКОРОСТЬ АТАКИ <b id="statAtkSpeed">100%</b></span>
+            <span id="weaponChip" class="chip chip-weapon">ОРУЖИЕ: БЛИЖНИЙ БОЙ</span>
+            <span id="pistolChip" class="chip chip-hidden">ПИСТОЛЕТ</span>
+            <span id="explosionChip" class="chip chip-hidden">ВЗРЫВ</span>
+            <span id="vampirismChip" class="chip chip-hidden">ВАМПИРИЗМ</span>
+            <span id="shotgunChip" class="chip chip-hidden">ДРОБОВИК</span>
+            <span id="axeChip" class="chip chip-hidden">СЕКИРА</span>
+            <span id="rapierChip" class="chip chip-hidden">РАПИРА</span>
+            <span id="mgChip" class="chip chip-hidden">ПУЛЁМЁТ</span>
+            <span id="overheatChip" class="chip chip-hidden">ПЕРЕГРЕВ</span>
+            <span id="slowChip" class="chip chip-hidden">ЗАМЕДЛЕНИЕ +0</span>
+          </div>
+        </div>
+        <div class="room-side">
+          <div class="room-label">
+            <span>КОМНАТА</span>
+            <strong><span id="roomNum">1</span> / <span id="roomTotal">10</span></strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="room-track" id="roomTrack"></div>
+
+      <div class="canvas-wrap">
+        <canvas id="game" width="960" height="600"></canvas>
+        <div id="roomBanner" class="room-banner"></div>
+      </div>
+
+      <div class="game-bottom">
+        <span><kbd>WASD</kbd> движение</span>
+        <span><kbd>ЛКМ</kbd> / <kbd>Пробел</kbd> удар / выстрел</span>
+        <span id="enemyCounter">Врагов: 0</span>
+      </div>
+
+      <!-- БОКОВОЕ МЕНЮ ОТЛАДКИ ИГРОВОГО ПРОЦЕССА -->
+      <div id="gameDebugPanel" class="game-debug-panel" aria-hidden="true">
+        <div class="gdp-head">
+          <b>ОТЛАДКА ИГРЫ</b>
+          <span id="gdpRoom">КОМНАТА 1/10</span>
+        </div>
+
+        <div class="gdp-field">
+          <div class="gdp-field-top"><span>УРОН</span><b id="gdpDamageVal">10</b></div>
+          <div class="gdp-row">
+            <input id="gdpDamageInput" class="debug-xp-input" type="text" inputmode="numeric" autocomplete="off" placeholder="±ЧИСЛО" aria-label="Изменение урона">
+            <button id="gdpDamageBtn" class="btn btn-primary debug-xp-btn" type="button">ВВЕСТИ</button>
+          </div>
+          <div id="gdpDamageHint" class="debug-xp-hint"></div>
+        </div>
+
+        <div class="gdp-field">
+          <div class="gdp-field-top"><span>СКОРОСТЬ</span><b id="gdpSpeedVal">278</b></div>
+          <div class="gdp-row">
+            <input id="gdpSpeedInput" class="debug-xp-input" type="text" inputmode="numeric" autocomplete="off" placeholder="±ЧИСЛО" aria-label="Изменение скорости">
+            <button id="gdpSpeedBtn" class="btn btn-primary debug-xp-btn" type="button">ВВЕСТИ</button>
+          </div>
+          <div id="gdpSpeedHint" class="debug-xp-hint"></div>
+        </div>
+
+        <div class="gdp-field">
+          <div class="gdp-field-top"><span>ЗДОРОВЬЕ</span><b id="gdpHealthVal">100/100</b></div>
+          <div class="gdp-row">
+            <input id="gdpHealthInput" class="debug-xp-input" type="text" inputmode="numeric" autocomplete="off" placeholder="±ЧИСЛО" aria-label="Изменение здоровья">
+            <button id="gdpHealthBtn" class="btn btn-primary debug-xp-btn" type="button">ВВЕСТИ</button>
+          </div>
+          <div id="gdpHealthHint" class="debug-xp-hint"></div>
+        </div>
+
+        <div class="gdp-field">
+          <div class="gdp-field-top"><span>СКОРОСТЬ АТАКИ</span><b id="gdpAttackVal">100%</b></div>
+          <div class="gdp-row">
+            <input id="gdpAttackInput" class="debug-xp-input" type="text" inputmode="numeric" autocomplete="off" placeholder="±ПРОЦЕНТ" aria-label="Изменение скорости атаки в процентах">
+            <button id="gdpAttackBtn" class="btn btn-primary debug-xp-btn" type="button">ВВЕСТИ</button>
+          </div>
+          <div id="gdpAttackHint" class="debug-xp-hint"></div>
+        </div>
+
+        <div class="gdp-field">
+          <div class="gdp-field-top"><span>ЗАМЕДЛЕНИЕ ВРАГОВ</span><b id="gdpSlowVal">0</b></div>
+          <div class="gdp-row">
+            <input id="gdpSlowInput" class="debug-xp-input" type="text" inputmode="numeric" autocomplete="off" placeholder="±ЧИСЛО" aria-label="Изменение замедления врагов">
+            <button id="gdpSlowBtn" class="btn btn-primary debug-xp-btn" type="button">ВВЕСТИ</button>
+          </div>
+          <div id="gdpSlowHint" class="debug-xp-hint"></div>
+        </div>
+
+        <div class="debug-toggles gdp-toggles">
+          <div class="debug-row">
+            <div><b>АВТОМАТИЧЕСКАЯ АТАКА</b><span>Удержание ЛКМ / Пробела — для любого оружия</span></div>
+            <button id="autoAttackToggle" class="toggle-btn" type="button">ВЫКЛ</button>
+          </div>
+          <div class="debug-row">
+            <div><b>ПАУЗА ВРАГОВ</b><span>Враги не двигаются и не атакуют</span></div>
+            <button id="enemyPauseToggle" class="toggle-btn" type="button">ВЫКЛ</button>
+          </div>
+        </div>
+
+        <div class="gdp-actions">
+          <button id="gdpMore" class="btn btn-primary" type="button">ЕЩЕ</button>
+          <button id="gdpInventory" class="btn" type="button">ИНВЕНТАРЬ</button>
+          <button id="gdpComplete" class="btn btn-danger" type="button">ЗАВЕРШИТЬ УРОВЕНЬ</button>
+          <button id="gdpDebug" class="btn btn-cancel" type="button">МЕНЮ ОТЛАДКИ</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ВЫБОР БАФФА -->
+    <section id="choiceScreen" class="screen overlay">
+      <div class="choice-card">
+        <h2 id="choiceTitle">КОМНАТА ПРОЙДЕНА</h2>
+        <p id="choiceSub" class="choice-sub">Выбери эффект и подтверди выбор</p>
+        <div id="choiceCards" class="choice-grid"></div>
+        <div id="choiceDescription" class="choice-description">Выбери эффект, чтобы увидеть описание</div>
+        <button id="confirmChoice" class="btn btn-primary confirm-choice" disabled>ПОДТВЕРДИТЬ</button>
+      </div>
+    </section>
+
+    <!-- ИНВЕНТАРЬ -->
+    <section id="inventoryScreen" class="screen overlay">
+      <div class="choice-card inventory-card">
+        <h2>ИНВЕНТАРЬ</h2>
+        <p class="choice-sub">Выбери оружие и способности. Наведи на блок, чтобы увидеть описание</p>
+        <div class="current-weapon">ТЕКУЩЕЕ ОРУЖИЕ: <b id="currentWeapon">БЛИЖНИЙ БОЙ</b></div>
+        <div id="inventoryGrid" class="inventory-grid">
+          <div id="inventoryWeaponColumn" class="inventory-column">
+            <h3 class="inventory-title">ОРУЖИЕ</h3>
+            <div id="inventoryCards" class="choice-grid inventory-weapons"></div>
+          </div>
+          <div id="inventoryAbilityColumn" class="inventory-column chip-hidden">
+            <h3 class="inventory-title">СПОСОБНОСТИ</h3>
+            <div id="inventoryAbilities" class="inventory-abilities"></div>
+            <p id="inventoryAbilityHint" class="inventory-hint"></p>
+          </div>
+        </div>
+        <div id="inventoryPopup" class="inventory-popup" aria-hidden="true"></div>
+        <button id="confirmWeapon" class="btn btn-primary confirm-choice" disabled>ВЫБРАТЬ</button>
+      </div>
+    </section>
+
+    <!-- МЕНЮ ОТЛАДКИ -->
+    <section id="debugScreen" class="screen overlay">
+      <div class="end-card">
+        <h2>МЕНЮ ОТЛАДКИ</h2>
+        <p class="choice-sub">Служебные функции</p>
+        <div class="debug-toggles">
+          <div class="debug-row">
+            <div><b>РЕЖИМ БОГА</b><span>Полностью убирает входящий урон</span></div>
+            <button id="godToggle" class="toggle-btn" type="button">ВЫКЛ</button>
+          </div>
+          <div class="debug-row">
+            <div><b>ПОЛНЫЙ КОНТРОЛЬ</b><span>Все баффы на выбор, можно выбрать несколько</span></div>
+            <button id="controlToggle" class="toggle-btn" type="button">ВЫКЛ</button>
+          </div>
+          <div class="debug-row">
+            <div><b>ОТЛАДКА ИГРОВОГО ПРОЦЕССА</b><span>Боковое меню характеристик во время игры</span></div>
+            <button id="gameDebugToggle" class="toggle-btn" type="button">ВЫКЛ</button>
+          </div>
+        </div>
+        <div class="speed-block">
+          <div class="speed-title">
+            <b>СКОРОСТЬ ИГРЫ</b>
+            <span>Меняет темп всего геймплея</span>
+          </div>
+          <div id="speedPresets" class="speed-presets">
+            <button class="speed-btn" data-speed="0.25" type="button">0.25×</button>
+            <button class="speed-btn" data-speed="0.5" type="button">0.5×</button>
+            <button class="speed-btn active" data-speed="1" type="button">1×</button>
+            <button class="speed-btn" data-speed="1.5" type="button">1.5×</button>
+            <button class="speed-btn" data-speed="2" type="button">2×</button>
+          </div>
+        </div>
+        <div class="speed-block">
+          <div class="speed-title">
+            <b>ДОБАВИТЬ ОПЫТ</b>
+            <span>Целое число любой длины. Кнопка «ВВЕСТИ» или ENTER</span>
+          </div>
+          <div class="xp-debug-row">
+            <input id="debugXpInput" class="debug-xp-input" type="text" inputmode="numeric" autocomplete="off" placeholder="КОЛИЧЕСТВО" aria-label="Количество опыта">
+            <button id="debugXpBtn" class="btn btn-primary debug-xp-btn" type="button">ВВЕСТИ</button>
+          </div>
+          <div id="debugXpHint" class="debug-xp-hint"></div>
+        </div>
+        <button id="resetBtn" class="btn btn-danger debug-reset" type="button">СБРОСИТЬ УРОВЕНЬ</button>
+        <button id="debugBack" class="btn btn-cancel" type="button">НАЗАД</button>
+      </div>
+    </section>
+
+    <!-- ПАУЗА -->
+    <section id="pauseScreen" class="screen overlay">
+      <div class="end-card pause-card">
+        <h2>ПАУЗА</h2>
+        <p class="choice-sub">Игра на паузе</p>
+        <div class="pause-actions">
+          <button id="resumeBtn" class="btn btn-primary" type="button">ПРОДОЛЖИТЬ</button>
+          <button id="pauseSoundBtn" class="btn btn-cancel sound-toggle" type="button">ЗВУК: ВКЛ</button>
+          <button id="exitBtn" class="btn btn-cancel" type="button">ВЫЙТИ В МЕНЮ</button>
+        </div>
+        <div class="pause-hint desktop-only"><kbd>T</kbd> / <kbd>P</kbd> / <kbd>Esc</kbd> — продолжить</div>
+      </div>
+    </section>
+
+    <!-- ПОДТВЕРЖДЕНИЕ ВЫХОДА -->
+    <section id="exitConfirmScreen" class="screen overlay">
+      <div class="confirm-card">
+        <h2>ВЫЙТИ В МЕНЮ?</h2>
+        <p>Текущий забег будет прерван. Все улучшения и прогресс комнаты потеряются.</p>
+        <div class="confirm-actions">
+          <button id="cancelExit" class="btn btn-cancel" type="button">ОТМЕНА</button>
+          <button id="confirmExit" class="btn btn-danger" type="button">ВЫЙТИ</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ПОДТВЕРЖДЕНИЕ СБРОСА УРОВНЯ -->
+    <section id="confirmScreen" class="screen overlay">
+      <div class="confirm-card">
+        <h2>СБРОСИТЬ УРОВЕНЬ?</h2>
+        <p>Уровень вернётся к 1, а опыт обнулится. Это действие нельзя отменить.</p>
+        <div class="confirm-actions">
+          <button id="cancelReset" class="btn btn-cancel" type="button">ОТМЕНА</button>
+          <button id="confirmReset" class="btn btn-danger" type="button">СБРОСИТЬ</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ФИНАЛ -->
+    <section id="endScreen" class="screen overlay">
+      <div class="end-card">
+        <h2 id="endTitle">КОНЕЦ</h2>
+        <p id="endSubtitle" class="end-subtitle"></p>
+        <div class="result-grid">
+          <div><span>Комнат пройдено</span><b id="endRooms">0 / 10</b></div>
+          <div><span>Нанесено урона</span><b id="endDealt">0</b></div>
+          <div><span>Получено урона</span><b id="endTaken">0</b></div>
+          <div><span>Опыт за забег</span><b id="endXp">0</b></div>
+        </div>
+        <div class="end-level">
+          <span>Уровень игрока</span>
+          <b id="endLevel">1</b>
+        </div>
+        <div class="xp-bar end-xp"><div id="endXpFill" class="xp-fill"></div></div>
+        <button id="menuBtn" class="btn btn-primary">В МЕНЮ</button>
+      </div>
+    </section>
+
+  </div>
+  <div id="screenFade" aria-hidden="true"></div>
+
+  <!-- Сенсорное управление (только на тач-устройствах) -->
+  <div id="touchControls" class="touch-controls touch-only" aria-hidden="true">
+    <button id="touchPauseBtn" class="touch-pause-btn" type="button" aria-label="Пауза">II</button>
+    <div id="joystickZone" class="joystick-zone">
+      <div id="joystick" class="joystick"><div id="joystickKnob" class="joystick-knob"></div></div>
+    </div>
+    <button id="attackBtn" class="attack-btn" type="button" aria-label="Атака">АТАКА</button>
+  </div>
+
+  <!-- Невидимая кнопка отладки в левом верхнем углу -->
+  <button id="touchDebugHotspot" class="touch-debug-hotspot" type="button" aria-label="Отладка"></button>
+
+  <div id="rotateHint" class="rotate-hint touch-only" aria-hidden="true">
+    <div class="rotate-icon">▯</div>
+    <b>ПОВЕРНИТЕ УСТРОЙСТВО</b>
+    <span>Игра работает только в альбомном режиме</span>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
