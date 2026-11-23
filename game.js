@@ -50,8 +50,16 @@ const COLLISION_EPS = 0.01;  // погрешность округления пр
 
 const SAVE_KEY = 'ten_rooms_save_v1';
 const SOUND_KEY = 'ten_rooms_sound_v1';
-const NOTICE_ID_VERSION = 'version-panel';
+const LEGACY_VERSION_NOTICE_ID = 'version-panel';
 let pendingNoticeDismiss = false;
+
+// ID метки привязан к номеру версии: новая версия = новый ID = метка показывается
+// один раз у каждого игрока, даже на GitHub Pages, где сохранение живёт в localStorage.
+function versionNoticeId() {
+  const el = document.querySelector('.version-value');
+  const version = (el && el.textContent ? el.textContent : '').trim() || '1.1';
+  return `version-panel-${version}`;
+}
 
 // Сложность задаёт параметры врагов и правила волн.
 const DIFFICULTIES = {
@@ -82,6 +90,12 @@ function normalizeSave(data) {
   const seenNotices = data && Array.isArray(data.seenNotices)
     ? [...new Set(data.seenNotices.filter(id => typeof id === 'string'))]
     : [];
+  // Старые сохранения с уже просмотренной меткой не должны получать её повторно
+  if (seenNotices.includes(LEGACY_VERSION_NOTICE_ID)) {
+    const old = seenNotices.indexOf(LEGACY_VERSION_NOTICE_ID);
+    if (old !== -1) seenNotices.splice(old, 1);
+    if (!seenNotices.includes(versionNoticeId())) seenNotices.push(versionNoticeId());
+  }
   return {
     level: Math.max(1, Math.floor(Number(data && data.level) || 1)),
     xp: Math.max(0, Math.floor(Number(data && data.xp) || 0)),
@@ -110,7 +124,7 @@ async function loadServerSave() {
       saveSource = 'server';
       // Если уведомление закрыли до загрузки серверного сохранения — не показываем его снова.
       if (pendingNoticeDismiss) {
-        if (!save.seenNotices.includes(NOTICE_ID_VERSION)) save.seenNotices.push(NOTICE_ID_VERSION);
+        if (!save.seenNotices.includes(versionNoticeId())) save.seenNotices.push(versionNoticeId());
         pendingNoticeDismiss = false;
         persist();
       }
@@ -142,14 +156,14 @@ function persist() {
 
 // Уведомления об обновлениях живут в сохранении и показываются один раз.
 function applyNotices() {
-  const show = !save.seenNotices.includes(NOTICE_ID_VERSION);
+  const show = !save.seenNotices.includes(versionNoticeId());
   $('settingsBtn').classList.toggle('has-notice', show);
   $('versionNotice').classList.toggle('has-notice', show);
 }
 
 function dismissVersionNotice() {
-  if (!save.seenNotices.includes(NOTICE_ID_VERSION)) {
-    save.seenNotices.push(NOTICE_ID_VERSION);
+  if (!save.seenNotices.includes(versionNoticeId())) {
+    save.seenNotices.push(versionNoticeId());
     if (saveLoading) pendingNoticeDismiss = true;
     persist();
   }
@@ -796,7 +810,7 @@ function refreshMenu() {
 
 /* ---------- Оружие ---------- */
 const WEAPONS = {
-  melee:   { name: 'БЛИЖНИЙ БОЙ', icon: '🗡️', desc: 'Короткий удар конусом перед собой. Стандартное оружие без особенностей.' },
+  melee:   { name: 'БЛИЖНИЙ БОЙ', icon: '🗡️', desc: 'Короткий удар очень узким сектором (~45°) перед собой. Атака в 1,5 раза быстрее, можно зажимать.' },
   axe:     { name: 'СЕКИРА', icon: '🪓', desc: 'Три быстрых удара по нажатию, но долгая перезарядка. Каждый удар на 50% слабее обычного и сильно отбрасывает врагов.' },
   rapier:  { name: 'РАПИРА', icon: '⚔️', desc: 'Рывок к курсору (КД 1,2 с) бьёт и оглушает врагов. Урон −50%, урон в рывке −75%, после рывка — замедление 30% на 2 с.' },
   pistol:  { name: 'ПИСТОЛЕТ', icon: '🔫', desc: 'Одиночные выстрелы по курсору. Можно стрелять зажатием.' },
@@ -904,7 +918,7 @@ function weaponAbilityLine(weaponId) {
 
 const WEAPON_INFO = {
   melee: [
-    'Дальность 78, удар сектором ~143°, перезарядка 0,5 с, урон 100%, отбрасывание 170.',
+    'Дальность 96, удар сектором ~45°, перезарядка 0,33 с (скорость атаки ×1,5), урон 100%, отбрасывание 170. Зажатие ЛКМ или Пробела работает по умолчанию.',
     'Получение: стартовое оружие. Заменяется карточкой любого другого оружия.',
   ],
   axe: [
@@ -1671,7 +1685,9 @@ function spawnBatch(amount) {
 // Параметры ближнего оружия: half — полуугол сектора, push — сила отбрасывания,
 // dmgMul — множитель урона одного удара относительно обычного ближнего боя
 const MELEE = {
-  melee:  { reach: 78,  half: 1.25,    cd: 0.5, push: 170, combo: 1, dmgMul: 1,   dash: 0 },
+  // Ближний бой: базовый интервал 0,5 с делён на 1,5 — скорость атаки ×1,5.
+  // Сектор сужен ещё вдвое — до ~45° (восьмая круга), дальность осталась увеличенной.
+  melee:  { reach: 96,  half: Math.PI / 8, cd: 0.5 / 1.5, push: 170, combo: 1, dmgMul: 1, dash: 0 },
   axe:    { reach: 105, half: Math.PI, cd: 1.3, push: 640, combo: 3, dmgMul: 0.5, dash: 0 },
   rapier: { reach: 140, half: 0.34,    cd: 1.2, push: 0,   combo: 1, dmgMul: 0.5, dash: 456, dashTime: 0.55 },
 };
@@ -2069,8 +2085,9 @@ function update(dt) {
   // Таймеры игрока
   p.attackCd = Math.max(0, p.attackCd - dt);
   p.invuln = Math.max(0, p.invuln - dt);
-  // Удержание кнопки работает только у пистолета; отладка разрешает зажатие для всех оружий
-  const firing = (debugAutoAttack || p.weapon === 'pistol')
+  // Удержание кнопки работает у пистолета и ближнего боя;
+  // отладка разрешает зажатие для всех оружий
+  const firing = (debugAutoAttack || p.weapon === 'pistol' || p.weapon === 'melee')
     && (mouse.down || keys.has('space'));
   if (firing && p.attackCd <= 0) playerAttack();
 
@@ -2474,11 +2491,15 @@ function drawSlash() {
       ctx.shadowBlur = 18;
       ctx.beginPath(); ctx.arc(0, 0, 100, 0, Math.PI * 2); ctx.stroke();
     } else {
+      const cfg = MELEE.melee;
+      const r = cfg.reach - 6;
+      const half = cfg.half;
+      // Только дуга по границе зоны поражения (~45°)
       ctx.strokeStyle = '#9ffcf8';
       ctx.lineWidth = 8 * k + 2;
       ctx.shadowColor = '#4ee2e0';
       ctx.shadowBlur = 18;
-      ctx.beginPath(); ctx.arc(0, 0, 72, -1.15, 1.15); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, r, -half, half); ctx.stroke();
     }
     ctx.restore();
   }

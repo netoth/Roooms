@@ -217,7 +217,7 @@ Fixes and interface:
   'Игра работает только в альбомном режиме': 'The game only works in landscape mode',
 
   // Оружие
-  'Короткий удар конусом перед собой. Стандартное оружие без особенностей.': 'A short cone-shaped swing in front of you. Standard weapon with no special traits.',
+  'Короткий удар очень узким сектором (~45°) перед собой. Атака в 1,5 раза быстрее, можно зажимать.': 'A short, very narrow (~45°) swing in front of you. Attacks 1.5× faster and can be held down.',
   'Три быстрых удара по нажатию, но долгая перезарядка. Каждый удар на 50% слабее обычного и сильно отбрасывает врагов.': 'Three fast hits per press, but a long cooldown. Each hit is 50% weaker than normal and knocks enemies back hard.',
   'Рывок к курсору (КД 1,2 с) бьёт и оглушает врагов. Урон −50%, урон в рывке −75%, после рывка — замедление 30% на 2 с.': 'Dash toward the cursor (CD 1.2s), hitting and stunning enemies. Damage −50%, dash damage −75%, then 30% slow for 2s.',
   'Одиночные выстрелы по курсору. Можно стрелять зажатием.': 'Single shots toward the cursor. Holding fires repeatedly.',
@@ -269,7 +269,7 @@ Fixes and interface:
   'Все враги двигаются на 30 единиц медленнее.': 'All enemies move 30 units slower.',
 
   // Энциклопедия: оружие
-  'Дальность 78, удар сектором ~143°, перезарядка 0,5 с, урон 100%, отбрасывание 170.': 'Range 78, ~143° sector hit, 0.5s cooldown, 100% damage, knockback 170.',
+  'Дальность 96, удар сектором ~45°, перезарядка 0,33 с (скорость атаки ×1,5), урон 100%, отбрасывание 170. Зажатие ЛКМ или Пробела работает по умолчанию.': 'Range 96, ~45° sector hit, 0.33s cooldown (1.5× attack speed), 100% damage, knockback 170. Holding LMB or Space works by default.',
   'Получение: стартовое оружие. Заменяется карточкой любого другого оружия.': 'How to get: starting weapon. Replaced by any other weapon card.',
   'Дальность 105, перезарядка 1,3 с. Одно нажатие наносит три удара, каждый — 50% обычного урона и с отбрасыванием 640.': 'Range 105, 1.3s cooldown. One press deals three hits, each at 50% normal damage with 640 knockback.',
   'Получение: уникальная карточка «Секира».': 'How to get: unique “Axe” card.',
