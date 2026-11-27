@@ -60,16 +60,16 @@ let pendingNoticeDismiss = false;
 // один раз у каждого игрока, даже на GitHub Pages, где сохранение живёт в localStorage.
 function versionNoticeId() {
   const el = document.querySelector('.version-value');
-  const version = (el && el.textContent ? el.textContent : '').trim() || '1.1';
+  const version = (el && el.textContent ? el.textContent : '').trim() || '1.2';
   return `version-panel-${version}-e${NOTICE_EPOCH}`;
 }
 
 // Сложность задаёт параметры врагов и правила волн.
 const DIFFICULTIES = {
-  easy:   { statMul: 1, countMul: 1, healOnRoom: true, xpMul: 0.5 },
-  normal: { statMul: 1, countMul: 1, healOnRoom: true, xpMul: 1 },
-  hard:   { statMul: 1, countMul: 0.5, healOnRoom: true, xpMul: 2 },
-  ultra:  { statMul: 1.2, countMul: 3, healOnRoom: false, xpMul: 5 },
+  easy:   { statMul: 0.8, countMul: 1, healOnRoom: true, xpMul: 0.5, dmgMul: 1 },
+  normal: { statMul: 1, countMul: 1, healOnRoom: true, xpMul: 1, dmgMul: 1 },
+  hard:   { statMul: 1.2, countMul: 0.5, healOnRoom: true, xpMul: 2, dmgMul: 1 },
+  ultra:  { statMul: 1.2, countMul: 3, healOnRoom: false, xpMul: 5, dmgMul: 1.5 },
 };
 
 // min/max — размер волны; fraction — какая доля предыдущей волны должна быть
@@ -79,7 +79,7 @@ const WAVE_RULES = {
   easy:   { min: 2, max: 3, fraction: 1,   timeout: 0 },
   normal: { min: 3, max: 5, fraction: 0.5, timeout: 0 },
   hard:   { min: 4, max: 5, fraction: 0.5, timeout: 5 },
-  ultra:  { min: 5, max: 6, fraction: 0.2, timeout: 0 },
+  ultra:  { min: 5, max: 6, fraction: 0.2, timeout: 5 },
 };
 
 /* ---------- Сохранение ---------- */
@@ -209,6 +209,7 @@ let debugAutoAttack = false;    // зажатие атаки для любого
 let debugEnemyPause = false;    // враги замирают и не атакуют
 let debugFreeChoice = false;    // меню баффов открыто из боковой панели, без завершения комнаты
 let debugFreeInventory = false; // инвентарь открыт из боковой панели, без завершения комнаты
+let debugOverlayFromPause = false; // «ЕЩЕ»/«ИНВЕНТАРЬ» открыты из паузы: вернуться обратно в паузу
 
 const keys = new Set();
 const mouse = { x: W / 2, y: H / 2, down: false };
@@ -803,6 +804,45 @@ function xpNeeded(level) {
   return Math.min(Number.MAX_VALUE, Math.round(1000 * Math.pow(1.1, level - 1)));
 }
 
+// Окно уровня игрока: только раскрывающееся окно в главном меню, без перехода.
+function positionLevelPanel() {
+  const xp = $('menuLevelTrigger');
+  const preview = $('enemyPreview');
+  const panel = $('levelPanel');
+  const parent = panel && panel.offsetParent;
+  if (!xp || !preview || !panel || !parent) return;
+  const pr = parent.getBoundingClientRect();
+  // Во время анимации перехода меню родитель может быть масштабирован —
+  // переводим экранные координаты в координаты самого меню.
+  const scale = parent.offsetWidth ? pr.width / parent.offsetWidth : 1;
+  const xr = xp.getBoundingClientRect();
+  const vr = preview.getBoundingClientRect();
+  panel.style.left = `${(xr.left - pr.left) / scale}px`;
+  panel.style.width = `${xr.width / scale}px`;
+  panel.style.bottom = `${(pr.bottom - xr.bottom) / scale}px`;
+  panel.style.setProperty('--level-panel-h', `${Math.max(0, (xr.bottom - vr.top) / scale)}px`);
+  panel.style.setProperty('--level-trigger-h', `${xr.height / scale}px`);
+}
+
+function toggleLevelPanel() {
+  const card = document.querySelector('.menu-card');
+  if (!card) return;
+  if (card.classList.contains('level-open')) {
+    collapseLevelPanel();
+  } else {
+    positionLevelPanel();
+    card.classList.add('level-open');
+    $('levelPanel').setAttribute('aria-hidden', 'false');
+  }
+}
+
+function collapseLevelPanel() {
+  const card = document.querySelector('.menu-card');
+  if (!card || !card.classList.contains('level-open')) return;
+  card.classList.remove('level-open');
+  $('levelPanel').setAttribute('aria-hidden', 'true');
+}
+
 function refreshMenu() {
   const need = xpNeeded(save.level);
   $('menuLevel').textContent = save.level;
@@ -813,12 +853,12 @@ function refreshMenu() {
 
 /* ---------- Оружие ---------- */
 const WEAPONS = {
-  melee:   { name: 'БЛИЖНИЙ БОЙ', icon: '🗡️', desc: 'Короткий удар очень узким сектором (~45°) перед собой. Урон 200%, атака в 1,5 раза быстрее, можно зажимать.' },
+  melee:   { name: 'БЛИЖНИЙ БОЙ', icon: '🗡️', desc: 'Удар по всей области сектора (~45°) между игроком и линией удара. Урон 200%, атака в 1,5 раза быстрее, можно зажимать.' },
   axe:     { name: 'СЕКИРА', icon: '🪓', desc: 'Три быстрых удара по нажатию, но долгая перезарядка. Каждый удар равен 50% базового урона и сильно отбрасывает врагов.' },
   rapier:  { name: 'РАПИРА', icon: '⚔️', desc: 'Рывок к курсору (КД 1,2 с) бьёт и оглушает врагов на 1 с. Урон 100%, получаемый урон в рывке −75%.' },
   pistol:  { name: 'ПИСТОЛЕТ', icon: '🔫', desc: 'Одиночные выстрелы по курсору. Можно стрелять зажатием.' },
   shotgun: { name: 'ДРОБОВИК', icon: '💣', desc: 'Задержка выстрела ×2, но за раз вылетает от 2 до 6 пуль.' },
-  mg:      { name: 'ПУЛЁМЁТ', icon: '🔥', desc: 'По нажатию персонаж почти 0,7 с трясётся, затем сам выпускает залп пуль до перегрева (~3 с) и 3 с не стреляет. Удержание кнопки не работает.' },
+  mg:      { name: 'ПУЛЁМЁТ', icon: '🔥', desc: 'Фиксированные 0,66 с тряски и 3 с стрельбы; затем перегрев. Скорость атаки ускоряет выстрелы вдвое слабее и ускоряет остывание. Пули наносят 75% обычного урона.' },
 };
 const BUFF_WEAPON = { axe: 'axe', rapier: 'rapier', pistol: 'pistol', shotgun: 'shotgun', mg: 'mg' };
 
@@ -840,43 +880,53 @@ const ABILITIES = {
     enabled: (p) => p.vampirismEnabled,
     set: (p, value) => { p.vampirismEnabled = value; },
   },
+  autoFire: {
+    id: 'autoFire', name: 'АВТОМАТ', icon: '🔁',
+    desc: 'Позволяет стрелять и атаковать зажатием ЛКМ или Пробела. Совместим с секирой, рапирой, дробовиком и пулемётом. Не работает с ближним боем и пистолетом (у пистолета зажатие и так есть). Включать и выключать можно в инвентаре.',
+    allows: (weaponId) => weaponAllowsAutoFire(weaponId),
+    owned: (p) => p.autoFire,
+    enabled: (p) => p.autoFireEnabled,
+    set: (p, value) => { p.autoFireEnabled = value; },
+  },
 };
 
 /* ---------- Баффы ---------- */
 const BUFFS = [
-  { id: 'dmg10', icon: '⚔️', name: 'Урон +10', desc: 'Каждый удар наносит на 10 единиц урона больше.', weight: 10,
+  { id: 'dmg10', icon: '⚔️', name: 'Урон +10', desc: 'Каждый удар наносит на 10 единиц урона больше.', weight: 10, tag: 'ОБЫЧНЫЙ НАВЫК',
     apply: (p) => { p.damage += 10; } },
-  { id: 'spd10', icon: '👟', name: 'Скорость +10', desc: 'Ты движешься быстрее на 10 единиц.', weight: 10,
+  { id: 'spd10', icon: '👟', name: 'Скорость +10', desc: 'Ты движешься быстрее на 10 единиц.', weight: 10, tag: 'ОБЫЧНЫЙ НАВЫК',
     apply: (p) => { p.speed += 10; } },
-  { id: 'hp10', icon: '❤️', name: 'Здоровье +10', desc: 'Максимальное здоровье +10. Сразу восстанавливает 10 HP.', weight: 10,
-    apply: (p) => { p.maxHp += 10; p.hp = Math.min(p.maxHp, p.hp + 10); } },
+  { id: 'hp10', icon: '❤️', name: 'Здоровье +20', desc: 'Максимальное здоровье +20. Сразу восстанавливает 20 HP.', weight: 10, tag: 'ОБЫЧНЫЙ НАВЫК',
+    apply: (p) => { p.maxHp += 20; p.hp = Math.min(p.maxHp, p.hp + 20); } },
   { id: 'pistol', icon: '🔫', name: 'Пистолет', desc: 'Ближний бой заменяется одиночными выстрелами по курсору.', weight: 10, unique: true, weapon: 'pistol', tag: 'ОРУЖИЕ · УНИКАЛЬНЫЙ',
     apply: (p) => { p.weapon = 'pistol'; } },
-  { id: 'as10', icon: '⚡', name: 'Скорость атаки +10', desc: 'Твои удары и выстрелы совершаются на 10% чаще.', weight: 10,
+  { id: 'as10', icon: '⚡', name: 'Скорость атаки +10', desc: 'Твои удары и выстрелы совершаются на 10% чаще.', weight: 10, tag: 'ОБЫЧНЫЙ НАВЫК',
     apply: (p) => { p.attackSpeed *= 1.1; } },
-  { id: 'as30', icon: '⚡', name: 'Скорость атаки +30', desc: 'Мощный эффект: все атаки и выстрелы совершаются на 30% чаще.', weight: 3, tag: 'ПОНИЖЕННЫЙ ШАНС',
+  { id: 'as30', icon: '⚡', name: 'Скорость атаки +30', desc: 'Мощный эффект: все атаки и выстрелы совершаются на 30% чаще.', weight: 3, tag: 'УЛУЧШЕННЫЙ НАВЫК · ПОНИЖЕННЫЙ ШАНС',
     apply: (p) => { p.attackSpeed *= 1.3; } },
-  { id: 'dmg30', icon: '💥', name: 'Урон +30', desc: 'Мощный эффект: +30 к урону.', weight: 3, tag: 'ПОНИЖЕННЫЙ ШАНС',
+  { id: 'dmg30', icon: '💥', name: 'Урон +30', desc: 'Мощный эффект: +30 к урону.', weight: 3, tag: 'УЛУЧШЕННЫЙ НАВЫК · ПОНИЖЕННЫЙ ШАНС',
     apply: (p) => { p.damage += 30; } },
-  { id: 'spd30', icon: '💨', name: 'Скорость +30', desc: 'Мощный эффект: +30 к скорости передвижения.', weight: 3, tag: 'ПОНИЖЕННЫЙ ШАНС',
+  { id: 'spd30', icon: '💨', name: 'Скорость +30', desc: 'Мощный эффект: +30 к скорости передвижения.', weight: 3, tag: 'УЛУЧШЕННЫЙ НАВЫК · ПОНИЖЕННЫЙ ШАНС',
     apply: (p) => { p.speed += 30; } },
-  { id: 'hp30', icon: '💖', name: 'Здоровье +30', desc: 'Максимальное здоровье +30. Сразу восстанавливает 30 HP.', weight: 3, tag: 'ПОНИЖЕННЫЙ ШАНС',
-    apply: (p) => { p.maxHp += 30; p.hp = Math.min(p.maxHp, p.hp + 30); } },
+  { id: 'hp30', icon: '💖', name: 'Здоровье +60', desc: 'Максимальное здоровье +60. Сразу восстанавливает 60 HP.', weight: 3, tag: 'УЛУЧШЕННЫЙ НАВЫК · ПОНИЖЕННЫЙ ШАНС',
+    apply: (p) => { p.maxHp += 60; p.hp = Math.min(p.maxHp, p.hp + 60); } },
   { id: 'explosion', icon: '💣', name: 'Взрыв', desc: 'Пули при попадании пропадают и взрываются, нанося 50% обычного урона пули всем врагам в области. Работает только с пистолетом или дробовиком. Включать и выключать можно в инвентаре.', weight: 3, unique: true, requiresGunWeapon: true, tag: 'ПОНИЖЕННЫЙ ШАНС · УНИКАЛЬНЫЙ · НУЖЕН ПИСТОЛЕТ ИЛИ ДРОБОВИК',
     apply: (p) => { p.explosion = true; p.explosionEnabled = true; } },
   { id: 'vampirism', icon: '🧛', name: 'Вампиризм', desc: 'При ударе по врагу восстанавливает 50% нанесённого урона, но естественная регенерация падает до +2 HP в секунду. Работает только с ближним боем и секирой. Включать и выключать можно в инвентаре.', weight: 3, unique: true, tag: 'ПОНИЖЕННЫЙ ШАНС · УНИКАЛЬНЫЙ · БЛИЖНИЙ БОЙ И СЕКИРА',
     apply: (p) => { p.vampirism = true; p.vampirismEnabled = true; } },
+  { id: 'autoFire', icon: '🔁', name: 'Автомат', desc: 'Атака по зажиму ЛКМ или Пробела. Совместим с секирой, рапирой, дробовиком и пулемётом; не работает с ближним боем и пистолетом. Включать и выключать можно в инвентаре.', weight: 3, unique: true, tag: 'ПОНИЖЕННЫЙ ШАНС · УНИКАЛЬНЫЙ · СЕКИРА · РАПИРА · ДРОБОВИК · ПУЛЁМЁТ',
+    apply: (p) => { p.autoFire = true; p.autoFireEnabled = true; } },
   { id: 'shotgun', icon: '💣', name: 'Дробовик', desc: 'Задержка между выстрелами ×2, но за один выстрел вылетает от 2 до 6 пуль.', weight: 10, unique: true, weapon: 'shotgun', tag: 'ОРУЖИЕ · УНИКАЛЬНЫЙ',
     apply: (p) => { p.weapon = 'shotgun'; } },
   { id: 'axe', icon: '🪓', name: 'Секира', desc: 'Три быстрых удара за одно нажатие с длинной перезарядкой. Каждый удар равен 50% базового урона, но отбрасывание усилено вдвое.', weight: 10, unique: true, weapon: 'axe', tag: 'ОРУЖИЕ · УНИКАЛЬНЫЙ',
     apply: (p) => { p.weapon = 'axe'; } },
   { id: 'rapier', icon: '⚔️', name: 'Рапира', desc: 'Рывок к курсору (КД 1,2 с) бьёт и оглушает врагов на 1 с. Урон 100%, получаемый урон в рывке −75%.', weight: 3, unique: true, weapon: 'rapier', tag: 'ОРУЖИЕ · УНИКАЛЬНЫЙ',
     apply: (p) => { p.weapon = 'rapier'; } },
-  { id: 'mg', icon: '🔥', name: 'Пулемёт', desc: 'По нажатию — почти 0,7 с тряски и залп пуль до перегрева (~3 с), затем 3 с без стрельбы. Удержание кнопки не работает.', weight: 3, unique: true, weapon: 'mg', tag: 'ОРУЖИЕ · УНИКАЛЬНЫЙ',
+  { id: 'mg', icon: '🔥', name: 'Пулемёт', desc: 'Фиксированные 0,66 с тряски и 3 с стрельбы, затем перегрев. Скорость атаки ускоряет стрельбу вдвое слабее и ускоряет остывание. Пули наносят 75% урона. С «Автоматом» можно стрелять зажатием.', weight: 3, unique: true, weapon: 'mg', tag: 'ОРУЖИЕ · УНИКАЛЬНЫЙ',
     apply: (p) => { p.weapon = 'mg'; } },
-  { id: 'slow10', icon: '🐌', name: 'Замедление врагов +10', desc: 'Все враги двигаются на 10 единиц медленнее.', weight: 10,
+  { id: 'slow10', icon: '🐌', name: 'Замедление врагов +10', desc: 'Все враги двигаются на 10 единиц медленнее.', weight: 10, tag: 'ОБЫЧНЫЙ НАВЫК',
     apply: (p) => { p.slow += 10; } },
-  { id: 'slow30', icon: '🧊', name: 'Замедление врагов +30', desc: 'Все враги двигаются на 30 единиц медленнее.', weight: 3, tag: 'ПОНИЖЕННЫЙ ШАНС',
+  { id: 'slow30', icon: '🧊', name: 'Замедление врагов +30', desc: 'Все враги двигаются на 30 единиц медленнее.', weight: 3, tag: 'УЛУЧШЕННЫЙ НАВЫК · ПОНИЖЕННЫЙ ШАНС',
     apply: (p) => { p.slow += 30; } },
 ];
 
@@ -889,6 +939,12 @@ function weaponAllowsExplosion() {
 function weaponAllowsVampirism(weaponId) {
   const w = weaponId || run.player.weapon;
   return w === 'melee' || w === 'axe';
+}
+
+// Автомат даёт зажатие всем оружиям, у которых его нет по умолчанию.
+function weaponAllowsAutoFire(weaponId) {
+  const w = weaponId || run.player.weapon;
+  return w === 'axe' || w === 'rapier' || w === 'shotgun' || w === 'mg';
 }
 
 /* ---------- Энциклопедия / меню инфо ---------- */
@@ -916,12 +972,13 @@ function dropChanceText(weight) {
 function weaponAbilityLine(weaponId) {
   const explosion = ABILITIES.explosion.allows(weaponId) ? 'работает' : 'не работает';
   const vampirism = ABILITIES.vampirism.allows(weaponId) ? 'работает' : 'не работает';
-  return `Способности: взрыв пуль — ${explosion}; вампиризм — ${vampirism}.`;
+  const autoFire = ABILITIES.autoFire.allows(weaponId) ? 'работает' : 'не работает';
+  return `Способности: взрыв пуль — ${explosion}; вампиризм — ${vampirism}; автомат — ${autoFire}.`;
 }
 
 const WEAPON_INFO = {
   melee: [
-    'Дальность 96, удар сектором ~45°, перезарядка 0,33 с (скорость атаки ×1,5), урон 200%, отбрасывание 170. Зажатие ЛКМ или Пробела работает по умолчанию.',
+    'Дальность 96, удар заполняет сектор ~45° от игрока до дуги, перезарядка 0,33 с (скорость атаки ×1,5), урон 200%, отбрасывание 170. Вплотную подошедшего врага удар откидывает почти к дуге. Зажатие ЛКМ или Пробела работает по умолчанию.',
     'Получение: стартовое оружие. Заменяется карточкой любого другого оружия.',
   ],
   axe: [
@@ -942,15 +999,25 @@ const WEAPON_INFO = {
     'Получение: уникальная карточка «Дробовик».',
   ],
   mg: [
-    'По нажатию ~0,66 с тряски, затем автоматическая стрельба ~3 с с интервалом 0,09 с. После этого перегрев на 3 с; зажатие кнопки не работает.',
-    'Получение: уникальная карточка «Пулемёт».',
+    'Фиксированные 0,66 с тряски и 3 с стрельбы с базовым интервалом 0,09 с; от скорости атаки не зависят. Затем перегрев: чем выше скорость атаки, тем быстрее остывание.',
+    'Скорость атаки увеличивает темп стрельбы вдвое слабее. Если интервал доходит до 1/60 с, дальше растёт урон пуль. Пули наносят 75% обычного урона.',
+    'Зажатие работает только со способностью «Автомат». Получение: уникальная карточка «Пулемёт».',
   ],
 };
 
 const INFO_SECTIONS = [
   {
-    title: 'ЭФФЕКТЫ',
-    items: EFFECT_ORDER.map((id) => BUFFS.find((b) => b.id === id)).filter(Boolean).map((b) => ({
+    title: 'НАВЫКИ',
+    items: [
+      {
+        id: 'skill-classes', name: 'КЛАССЫ ДРОПА', icon: '🃏', tag: 'НАВЫКИ · ОРУЖИЕ · СПОСОБНОСТИ',
+        lines: [
+          'Все выпадающие карточки делятся на три класса: навыки (урон, скорость, здоровье, скорость атаки и замедление врагов), оружие и способности.',
+          'Навыки бывают обычными (+10, обычный шанс) и улучшенными (+30, пониженный шанс). Исключение: здоровье — обычный навык даёт +20, улучшенный +60.',
+          'Оружие и способности уникальны и попадают в свои разделы энциклопедии.',
+        ],
+      },
+      ...EFFECT_ORDER.map((id) => BUFFS.find((b) => b.id === id)).filter(Boolean).map((b) => ({
       id: `effect-${b.id}`,
       name: b.name,
       icon: b.icon,
@@ -964,6 +1031,7 @@ const INFO_SECTIONS = [
           : []),
       ],
     })),
+    ],
   },
   {
     title: 'СПОСОБНОСТИ',
@@ -990,6 +1058,17 @@ const INFO_SECTIONS = [
           `Включается и выключается в инвентаре. Уникальный дроп. ${dropChanceText(BUFFS.find((b) => b.id === 'vampirism').weight)}`,
         ],
       },
+      {
+        id: 'ability-autoFire',
+        name: ABILITIES.autoFire.name,
+        icon: ABILITIES.autoFire.icon,
+        tag: 'ПОНИЖЕННЫЙ ШАНС · УНИКАЛЬНЫЙ',
+        lines: [
+          'Позволяет атаковать по зажиму ЛКМ или Пробела там, где обычно нужно нажимать каждый раз.',
+          'Совместимые оружия: секира, рапира, дробовик, пулемёт. Несовместимые: ближний бой и пистолет (пистолет и без него стреляет зажатием).',
+          `Включается и выключается в инвентаре. Уникальный дроп. ${dropChanceText(BUFFS.find((b) => b.id === 'autoFire').weight)}`,
+        ],
+      },
     ],
   },
   {
@@ -1007,75 +1086,62 @@ const INFO_SECTIONS = [
     })),
   },
   {
-    title: 'СЛОЖНОСТЬ',
+    title: 'ИГРА',
     items: [
       {
-        id: 'diff-easy', name: 'ЛЕГКИЙ', icon: '🌿', tag: 'ОПЫТ ×0,5',
+        id: 'game-difficulty', name: 'СЛОЖНОСТЬ', icon: '⚙️', tag: 'ЧЕТЫРЕ ВАРИАНТА',
         lines: [
-          'Характеристики врагов ×1, количество врагов ×1.',
-          'Волны по 2–3 врага; следующая приходит только после 100% убитых врагов предыдущей волны.',
-          'Новая комната полностью восстанавливает HP.',
+          '[[w]]Лёгкий: характеристики врагов ×0,8, количество ×1, волны 2–3, XP ×0,5; следующая волна только после полной зачистки, комната лечит.',
+          '[[w]]Обычный: характеристики и количество ×1, волны 3–5, XP ×1; следующая волна после 50% убитых, комната лечит.',
+          '[[w]]Сложный: характеристики ×1,2, количество ×0,5, волны 4–5, XP ×2; следующая волна после 50% убитых или через 5 секунд, комната лечит.',
+          '[[w]]Сверхтяжёлый: характеристики ×1,2, урон врагов дополнительно ×1,5, количество ×3, волны 5–6, XP ×5; следующая волна после 20% убитых или через 5 секунд простоя, комната НЕ лечит.',
+          'У всех сложностей нижний и верхний лимит волны растут на 10% за комнату.',
         ],
       },
       {
-        id: 'diff-normal', name: 'ОБЫЧНЫЙ', icon: '⚖️', tag: 'ОПЫТ ×1',
+        id: 'mode-normal', name: 'РЕЖИМ ИГРЫ · ОБЫЧНЫЙ', icon: '🏠', tag: '10 КОМНАТ',
         lines: [
-          'Характеристики врагов ×1, количество врагов ×1.',
-          'Волны по 3–5 врагов; следующая приходит после 50% убитых.',
-          'Новая комната полностью восстанавливает HP.',
-        ],
-      },
-      {
-        id: 'diff-hard', name: 'СЛОЖНЫЙ', icon: '🔥', tag: 'ОПЫТ ×2',
-        lines: [
-          'Характеристики врагов ×1, количество врагов ×0,5.',
-          'Волны по 4–5 врагов; следующая приходит после 50% убитых или через 5 секунд.',
-          'Новая комната полностью восстанавливает HP.',
-        ],
-      },
-      {
-        id: 'diff-ultra', name: 'СВЕРХТЯЖЁЛЫЙ', icon: '💀', tag: 'ОПЫТ ×5',
-        lines: [
-          'Характеристики врагов ×1,2 (HP, урон и скорость), количество врагов ×3.',
-          'Волны по 5–6 врагов; следующая приходит после 20% убитых.',
-          'Новая комната НЕ лечит: здоровье приходится возвращать баффами и вампиризмом.',
-        ],
-      },
-    ],
-  },
-  {
-    title: 'РЕЖИМЫ',
-    items: [
-      {
-        id: 'mode-normal', name: 'ОБЫЧНЫЙ', icon: '🏠', tag: '10 КОМНАТ',
-        lines: [
-          'Стандартный забег из 10 комнат. Обычные враги сильнеют от комнаты к комнате на 5–30%.',
+          'Стандартный забег из 10 комнат. Количество обычных врагов растёт на 5–30% за комнату. HP растёт так же до 20-й комнаты, после 20-й вдвое медленнее, с 30-й не растёт; урон не меняется; лимиты волны +10% за комнату.',
           'Боссы: на 5-й комнате 750 HP и 30 урона, на 10-й — 1500 HP и 50 урона.',
           'В комнатах с боссом препятствия не создаются.',
         ],
       },
       {
-        id: 'mode-hundred', name: '100 КОМНАТ', icon: '🏙️', tag: 'СКОРОСТЬ ×1,5',
+        id: 'mode-hundred', name: 'РЕЖИМ ИГРЫ · 100 КОМНАТ', icon: '🏙️', tag: 'БОСС КАЖДЫЕ 10',
         lines: [
-          'Забег из 100 комнат: весь геймплей ускорен в 1,5 раза.',
+          'Забег из 100 комнат в обычном темпе.',
           'Босс каждые 10 комнат: 1000 HP и 50 урона, каждый следующий сильнее в 1,5 раза; на 100-й комнате параметры сбрасываются к первому боссу.',
           'Опыт не делится: итоговый множитель зависит только от выбранной сложности.',
         ],
       },
       {
-        id: 'mode-clean', name: 'ЧИСТОЕ ПОЛЕ', icon: '🌾', tag: 'БЕСКОНЕЧНО',
+        id: 'mode-clean', name: 'РЕЖИМ ИГРЫ · ЧИСТОЕ ПОЛЕ', icon: '🌾', tag: 'БЕСКОНЕЧНО',
         lines: [
           'Бесконечный забег: комнат нет предела, пока не погибнешь.',
-          'Препятствия и боссы не появляются — только обычные враги, которые сильнеют от комнаты к комнате на 5–30%.',
+          'Препятствия и боссы не появляются — только обычные враги: количество растёт на 5–30% за комнату, HP до 20-й так же, после 20-й вдвое медленнее, с 30-й не растёт; урон не меняется; лимиты волны +10% за комнату.',
           'Победы в этом режиме нет: забег заканчивается только поражением.',
         ],
       },
       {
-        id: 'mode-bossrush', name: 'БОССИНГ', icon: '👑', tag: 'БЕСКОНЕЧНО',
+        id: 'mode-bossrush', name: 'РЕЖИМ ИГРЫ · БОССИНГ', icon: '👑', tag: 'БЕСКОНЕЧНО',
         lines: [
           'Бесконечный забег: босс в каждой комнате, препятствия не создаются.',
           'Босс: 750 HP и 30 урона в первой комнате, дальше +25% HP и +15% урона за комнату; после 10-й комнаты цикл начинается заново.',
           'Победы в этом режиме нет: забег заканчивается только поражением.',
+        ],
+      },
+      {
+        id: 'control-choice', name: 'ВЫБОР ЭФФЕКТА', icon: '🃏',
+        lines: [
+          'После пройденной комнаты предлагаются две карточки. Клик по карточке выбирает эффект, «ПОДТВЕРДИТЬ» применяет его и открывает инвентарь.',
+          'При включённом «Полном контроле» доступны все эффекты сразу и можно отметить несколько.',
+        ],
+      },
+      {
+        id: 'control-inventory', name: 'ИНВЕНТАРЬ', icon: '🎒',
+        lines: [
+          'Выбери одно оружие и при желании включи/выключи имеющиеся способности, затем нажми «ВЫБРАТЬ».',
+          'Наведение на квадратную карточку скрывает иконку и показывает описание в непрозрачном окошке.',
         ],
       },
     ],
@@ -1108,7 +1174,7 @@ const INFO_SECTIONS = [
         id: 'control-attack', name: 'АТАКА И ПРИЦЕЛ', icon: '🖱️',
         lines: [
           'ЛКМ или Пробел — удар/выстрел; направление задаёт курсор.',
-          'По умолчанию зажатие повторяет атаку только у пистолета. В меню отладки игры переключатель «Автоматическая атака» разрешает зажатие для любого оружия.',
+          'По умолчанию зажатие повторяет атаку только у пистолета и ближнего боя. Способность «Автомат» добавляет зажатие секире, рапире, дробовику и пулемёту; меню отладки разрешает его для любого оружия.',
         ],
       },
       {
@@ -1120,17 +1186,10 @@ const INFO_SECTIONS = [
         ],
       },
       {
-        id: 'control-choice', name: 'ВЫБОР ЭФФЕКТА', icon: '🃏',
+        id: 'lose-menu', name: 'МЕНЮ ПРОИГРЫША', icon: '💀',
         lines: [
-          'После пройденной комнаты предлагаются две карточки. Клик по карточке выбирает эффект, «ПОДТВЕРДИТЬ» применяет его и открывает инвентарь.',
-          'При включённом «Полном контроле» доступны все эффекты сразу и можно отметить несколько.',
-        ],
-      },
-      {
-        id: 'control-inventory', name: 'ИНВЕНТАРЬ', icon: '🎒',
-        lines: [
-          'Выбери одно оружие и при желании включи/выключи имеющиеся способности, затем нажми «ВЫБРАТЬ».',
-          'Наведение на квадратную карточку скрывает иконку и показывает описание в непрозрачном окошке.',
+          'Экран, который появляется после поражения. Он не уходит в главное меню сам: можно нажать «ИГРАТЬ СНАЧАЛА» с тем же режимом и сложностью или «В МЕНЮ».',
+          'Статистика: комнаты, опыт за забег, полученный и нанесённый урон.',
         ],
       },
       {
@@ -1159,11 +1218,11 @@ const INFO_SECTIONS = [
       {
         id: 'debug-game', name: 'МЕНЮ ОТЛАДКИ ИГРЫ', icon: '📊', tag: 'БОКОВАЯ ПАНЕЛЬ',
         lines: [
-          'Пять полей с плюсом/минусом: урон, скорость, здоровье, скорость атаки (в процентах) и замедление врагов.',
+          'Пять полей с плюсом/минусом: урон, скорость, здоровье, скорость атаки и замедление врагов. В поле скорости атаки число прибавляется к текущему проценту от обычной скорости: +10 превращает 100% в 110%.',
           '«Автоматическая атака» — зажатие ЛКМ/Пробела работает для любого оружия; сама по себе кнопка атаку не начинает.',
           '«Пауза врагов» — враги, боссы, их пули, спавн и подкрепления замирают; игрок может двигаться, атаковать и менять настройки.',
           '«Показывать в игре» — работает только при включённом главном переключателе: выключено — панель только в паузе, включено — и в паузе, и во время забега.',
-          'Кнопки: «ЕЩЕ» — полный контроль без завершения комнаты; «ИНВЕНТАРЬ» — тоже без перехода; «ЗАВЕРШИТЬ УРОВЕНЬ» — обычный проход комнаты; «МЕНЮ ОТЛАДКИ» — открывает общую отладку через паузу.',
+          'Кнопки: «ЕЩЕ» — полный контроль без завершения комнаты, из паузы открывается поверх паузы; «ИНВЕНТАРЬ» — тоже без перехода и тоже возвращает в паузу; «ЗАВЕРШИТЬ УРОВЕНЬ» — мгновенный переход в следующую комнату без выбора эффектов и инвентаря, из паузы игра не возобновляется; «МЕНЮ ОТЛАДКИ» — открывает общую отладку через паузу.',
         ],
       },
     ],
@@ -1227,7 +1286,21 @@ function showInfoItem(item) {
   detail.appendChild(head);
   for (const line of item.lines) {
     const p = document.createElement('p');
-    p.textContent = line;
+    // [[w]] выделяет название режима белым цветом, остаток строки остаётся обычным.
+    if (typeof line === 'string' && line.startsWith('[[w]]')) {
+      const body = line.slice(5);
+      const colon = body.indexOf(':');
+      if (colon > -1) {
+        const name = document.createElement('span');
+        name.className = 'info-white';
+        name.textContent = body.slice(0, colon);
+        p.append(name, document.createTextNode(body.slice(colon)));
+      } else {
+        p.textContent = body;
+      }
+    } else {
+      p.textContent = line;
+    }
     detail.appendChild(p);
   }
   detail.scrollTop = 0;
@@ -1445,11 +1518,14 @@ function isBossRoomNumber(n) {
 /* ---------- Создание забега ---------- */
 function newRun() {
   resetPreviewKills();
+  if (endTimer) { clearInterval(endTimer); endTimer = null; }
+  $('menuBtn').textContent = 'В МЕНЮ';
   if (choiceTimer) { clearTimeout(choiceTimer); choiceTimer = null; }
   pausedFrom = null;
   choicePendingResume = false;
   debugFreeChoice = false;
   debugFreeInventory = false;
+  debugOverlayFromPause = false;
   const modeId = selectedMode;
   const endless = modeId === 'clean' || modeId === 'bossrush';
   const hundred = modeId === 'hundred';
@@ -1458,13 +1534,15 @@ function newRun() {
     modeId,
     room: 0,
     totalRooms: endless ? Infinity : (hundred ? 100 : 10),
-    timeScale: hundred ? 1.5 : 1,
+    timeScale: 1,
     xpDivisor: 1,
     statMul: diff.statMul,
+    dmgMul: diff.dmgMul,
     countMul: diff.countMul,
     healOnRoom: diff.healOnRoom,
     xpMul: diff.xpMul,
     waveRule: WAVE_RULES[selectedDifficulty] || WAVE_RULES.normal,
+    waveMul: 1,
     scale: { count: 10, hp: 20, dmg: 20 },
     toSpawn: 0,
     waveSize: 0,
@@ -1503,9 +1581,12 @@ function newRun() {
       explosionEnabled: true,
       vampirism: false,
       vampirismEnabled: true,
+      autoFire: false,
+      autoFireEnabled: true,
       slow: 0,
       mgHeat: 0,
       mgOverheat: 0,
+      mgOverheatMax: MG_OVERHEAT_TIME,
       mgBurst: null,
       mgShake: 0,
       dash: null,
@@ -1567,13 +1648,19 @@ function finishGameIntro() {
 function enterRoom(n, deferSpawn = false) {
   run.room = n;
 
-  // Рост характеристик врагов на 5–30% за каждую комнату
+  // Количество врагов растёт на 5–30% за комнату. HP растёт так же до 20-й,
+  // после 20-й вдвое медленнее, а с 30-й совсем перестаёт увеличиваться.
   if (n > 1) {
     const growth = rand(1.05, 1.30);
     run.scale.count *= growth;
-    run.scale.hp *= growth;
-    run.scale.dmg *= growth;
+    if (n < 30) {
+      const hpGrowth = n > 20 ? 1 + (growth - 1) / 2 : growth;
+      run.scale.hp *= hpGrowth;
+    }
   }
+
+  // Нижний и верхний лимит спавна за раз: +10% после каждой комнаты
+  run.waveMul = Math.pow(1.10, n - 1);
 
   const isBoss = isBossRoomNumber(n);
   let count = Math.round(run.scale.count);
@@ -1606,6 +1693,7 @@ function enterRoom(n, deferSpawn = false) {
   p.attackCd = 0.25;
   p.mgHeat = 0;
   p.mgOverheat = 0;
+  p.mgOverheatMax = MG_OVERHEAT_TIME;
   p.mgBurst = null;
   p.mgShake = 0;
   p.dash = null;
@@ -1649,9 +1737,9 @@ function spawnBoss(level) {
     hp = level === 5 ? 750 : 1500;
     damage = level % 10 === 0 ? 50 : 30;
   }
-  // Сверхтяжёлый режим: +20% к здоровью, скорости и урону всех врагов
+  // Множители сложности: характеристики и дополнительный урон врагов
   hp = Math.round(hp * run.statMul);
-  damage = Math.round(damage * run.statMul);
+  damage = Math.round(damage * run.statMul * run.dmgMul);
   const boss = {
     type: 'boss',
     x: W / 2, y: 115, r: Math.round(32 * SIZE_SCALE),
@@ -1680,7 +1768,10 @@ function aliveMobs() {
 // Последняя волна может быть меньше минимального размера, если в лимите осталось мало врагов.
 function spawnWave() {
   const rule = run.waveRule || WAVE_RULES.normal;
-  const size = Math.min(run.toSpawn, Math.floor(rand(rule.min, rule.max + 1)));
+  const mul = run.waveMul || 1;
+  const min = Math.max(1, Math.round(rule.min * mul));
+  const max = Math.max(min, Math.round(rule.max * mul));
+  const size = Math.min(run.toSpawn, Math.floor(rand(min, max + 1)));
   if (size <= 0) return;
   spawnBatch(size);
   run.waveSize = size;
@@ -1713,7 +1804,7 @@ function spawnBatch(amount) {
       type: 'mob',
       x, y, r: Math.round(15 * SIZE_SCALE),
       hp, maxHp: hp,
-      damage: Math.max(1, Math.round(run.scale.dmg * run.statMul)),
+      damage: Math.max(1, Math.round(run.scale.dmg * run.statMul * run.dmgMul)),
       speed: rand(80, 102) * SPEED_SCALE * run.statMul,
       speedVar: rand(0.92, 1.08), wobble: rand(0, Math.PI * 2),
       touchCd: rand(0, 0.4),
@@ -1736,11 +1827,32 @@ const MELEE = {
   rapier: { reach: 140, half: 0.34,    cd: 1.2, push: 0,   combo: 1, dmgMul: 1, dash: 456, dashTime: 0.55 },
 };
 
-// Пулемёт: тряска перед залпом, интервал выстрелов и время стрельбы до перегрева
+// Пулемёт: тряска, время стрельбы и базовая перезарядка не зависят от скорости атаки.
 const MG_WINDUP = 0.66;
 const MG_SHOT_CD = 0.09;
 const MG_FIRE_TIME = 3;
 const MG_OVERHEAT_TIME = 3;
+const MG_BULLET_DAMAGE = 0.75;
+// Быстрее 60 выстрелов в секунду движок не успевает прогружать пули,
+// поэтому упущенный темп компенсируется уроном каждой пули.
+const MIN_BULLET_INTERVAL = 1 / 60;
+
+function bulletRate(attackSpeed, half = false) {
+  return Math.max(0.05, 1 + (attackSpeed - 1) * (half ? 0.5 : 1));
+}
+
+function shotInterval(base, attackSpeed, half = false) {
+  return Math.max(MIN_BULLET_INTERVAL, base / bulletRate(attackSpeed, half));
+}
+
+function bulletDamage(base, baseInterval, interval) {
+  return base * Math.max(1, baseInterval / interval);
+}
+
+function mgOverheatTime(attackSpeed) {
+  // Чем выше скорость атаки, тем быстрее остывает пулемёт.
+  return MG_OVERHEAT_TIME / bulletRate(attackSpeed, true);
+}
 
 function meleeStrike(w, aim, targets, hitSet) {
   const p = run.player;
@@ -1759,7 +1871,10 @@ function meleeStrike(w, aim, targets, hitSet) {
     const dist = Math.hypot(dx, dy);
     if (!targets) {
       if (dist > cfg.reach + e.r) continue;
-      if (cfg.half < Math.PI) {
+      // Враги, вплотную подошедшие к игроку, тоже попадают под удар,
+      // даже если оказались чуть в стороне от линии удара.
+      const hugging = dist <= p.r + e.r + 8;
+      if (!hugging && cfg.half < Math.PI) {
         const ang = Math.atan2(dy, dx);
         const diff = Math.atan2(Math.sin(ang - aim), Math.cos(ang - aim));
         if (Math.abs(diff) > cfg.half) continue;
@@ -1773,7 +1888,11 @@ function meleeStrike(w, aim, targets, hitSet) {
       // Вместо отбрасывания — оглушение на 1 секунду
       e.stun = 1;
     } else {
-      const push = cfg.push * (e.type === 'boss' ? 0.2 : 1);
+      let push = cfg.push * (e.type === 'boss' ? 0.2 : 1);
+      // Ближний бой отбрасывает вплотную подошедшего врага почти к границе удара.
+      if (w === 'melee' && e.type !== 'boss') {
+        push = Math.max(push, (cfg.reach - Math.min(dist, cfg.reach)) * 7);
+      }
       e.kx += (dx / (dist || 1)) * push;
       e.ky += (dy / (dist || 1)) * push;
     }
@@ -1806,23 +1925,24 @@ function playerAttack() {
   if (p.attackCd > 0 || p.stun > 0) return;
   const w = p.weapon;
 
-  // Пулемёт: нажатие запускает короткую тряску, затем залп до перегрева
+  // Пулемёт: нажатие запускает фиксированную тряску и фиксированный залп
   if (w === 'mg') {
     if (p.mgOverheat > 0 || p.mgBurst) return;
-    const windup = MG_WINDUP / p.attackSpeed;
-    p.mgBurst = { windup, timer: 0 };
-    p.mgShake = windup;
-    p.attackCd = windup;
+    p.mgBurst = { windup: MG_WINDUP, timer: 0, fireLeft: MG_FIRE_TIME, elapsed: 0 };
+    p.mgShake = MG_WINDUP;
+    p.attackCd = MG_WINDUP;
     sfx('mgStart');
     return;
   }
 
   // Огнестрельное оружие
   if (w === 'pistol' || w === 'shotgun') {
-    let cd, pellets = 1, spread = 0.035;
-    if (w === 'pistol') cd = 0.35;
-    else { cd = 0.7; pellets = Math.floor(rand(2, 7)); spread = 0.55; }
-    p.attackCd = cd / p.attackSpeed;
+    let baseCd, pellets = 1, spread = 0.035;
+    if (w === 'pistol') baseCd = 0.35;
+    else { baseCd = 0.7; pellets = Math.floor(rand(2, 7)); spread = 0.55; }
+    const cd = shotInterval(baseCd, p.attackSpeed);
+    const damage = bulletDamage(p.damage, baseCd, cd);
+    p.attackCd = cd;
 
     const baseAng = Math.atan2(mouse.y - p.y, mouse.x - p.x);
     for (let i = 0; i < pellets; i++) {
@@ -1830,7 +1950,7 @@ function playerAttack() {
       run.playerBullets.push({
         x: p.x + Math.cos(ang) * 19, y: p.y + Math.sin(ang) * 19,
         vx: Math.cos(ang) * 560, vy: Math.sin(ang) * 560,
-        r: 5, damage: p.damage, life: 1.4,
+        r: 5, damage, life: 1.4,
       });
     }
     sfx(w === 'shotgun' ? 'shotgun' : 'shot');
@@ -2126,7 +2246,8 @@ function update(dt) {
   p.invuln = Math.max(0, p.invuln - dt);
   // Удержание кнопки работает у пистолета и ближнего боя;
   // отладка разрешает зажатие для всех оружий
-  const firing = (debugAutoAttack || p.weapon === 'pistol' || p.weapon === 'melee')
+  const firing = (debugAutoAttack || p.weapon === 'pistol' || p.weapon === 'melee'
+      || (p.autoFire && p.autoFireEnabled && weaponAllowsAutoFire()))
     && (mouse.down || keys.has('space'));
   if (firing && p.attackCd <= 0) playerAttack();
 
@@ -2138,26 +2259,32 @@ function update(dt) {
       b.windup -= dt;
     } else {
       b.timer -= dt;
+      b.fireLeft -= dt;
+      b.elapsed = Math.min(MG_FIRE_TIME, b.elapsed + dt);
+      p.mgHeat = b.elapsed;
       if (b.timer <= 0 && p.mgOverheat <= 0) {
-        b.timer = MG_SHOT_CD / p.attackSpeed;
-        p.mgHeat += MG_SHOT_CD;
+        const cd = shotInterval(MG_SHOT_CD, p.attackSpeed, true);
+        b.timer = cd;
+        const damage = bulletDamage(p.damage * MG_BULLET_DAMAGE, MG_SHOT_CD, cd);
         const baseAng = Math.atan2(mouse.y - p.y, mouse.x - p.x);
         const ang = baseAng + rand(-0.0175, 0.0175);
         run.playerBullets.push({
           x: p.x + Math.cos(ang) * 19, y: p.y + Math.sin(ang) * 19,
           vx: Math.cos(ang) * 560, vy: Math.sin(ang) * 560,
-          r: 5, damage: p.damage, life: 1.4,
+          r: 5, damage, life: 1.4,
         });
         sfx('mg');
-        if (p.mgHeat >= MG_FIRE_TIME) {
-          p.mgHeat = 0;
-          p.mgOverheat = MG_OVERHEAT_TIME;
-          p.mgBurst = null;
-          p.mgShake = 0;
-          p.attackCd = 0;
-          burst(p.x, p.y, '#ff7a45', 22, 220);
-          sfx('overheat');
-        }
+      }
+      // Длительность залпа фиксированная: speed атаки влияет только на темп.
+      if (b.fireLeft <= 0) {
+        p.mgHeat = 0;
+        p.mgOverheatMax = mgOverheatTime(p.attackSpeed);
+        p.mgOverheat = p.mgOverheatMax;
+        p.mgBurst = null;
+        p.mgShake = 0;
+        p.attackCd = 0;
+        burst(p.x, p.y, '#ff7a45', 22, 220);
+        sfx('overheat');
       }
     }
   }
@@ -2533,7 +2660,11 @@ function drawSlash() {
       const cfg = MELEE.melee;
       const r = cfg.reach - 6;
       const half = cfg.half;
-      // Только дуга по границе зоны поражения (~45°)
+      // Зона поражения — вся область между игроком и дугой (~45°).
+      ctx.globalAlpha = k * 0.18;
+      ctx.fillStyle = '#4ee2e0';
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, r, -half, half); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = k;
       ctx.strokeStyle = '#9ffcf8';
       ctx.lineWidth = 8 * k + 2;
       ctx.shadowColor = '#4ee2e0';
@@ -2771,7 +2902,7 @@ function drawPlayer() {
     const bw = 46, bh = 5;
     const bx = p.x - bw / 2, by = p.y + p.r + 12;
     const progress = cooling
-      ? clamp(p.mgOverheat / MG_OVERHEAT_TIME, 0, 1)
+      ? clamp(p.mgOverheat / (p.mgOverheatMax || MG_OVERHEAT_TIME), 0, 1)
       : clamp(p.mgHeat / MG_FIRE_TIME, 0, 1);
     ctx.save();
     ctx.fillStyle = 'rgba(6,7,16,.85)';
@@ -2856,6 +2987,8 @@ function updateHud() {
   $('vampirismChip').classList.toggle('chip-hidden', !p.vampirism);
   $('vampirismChip').textContent = p.vampirismEnabled ? 'ВАМПИРИЗМ' : 'ВАМПИРИЗМ ВЫКЛ';
   $('vampirismChip').classList.toggle('chip-vampirism', p.vampirism && p.vampirismEnabled && weaponAllowsVampirism());
+  $('autoFireChip').classList.toggle('chip-hidden', !p.autoFire);
+  $('autoFireChip').textContent = p.autoFireEnabled ? 'АВТОМАТ' : 'АВТОМАТ ВЫКЛ';
   $('overheatChip').classList.toggle('chip-hidden', p.mgOverheat <= 0);
   $('overheatChip').textContent = `ПЕРЕГРЕВ ${p.mgOverheat.toFixed(1)}с`;
   $('slowChip').textContent = `ЗАМЕДЛЕНИЕ +${p.slow}`;
@@ -2923,7 +3056,7 @@ function openChoice() {
 
 function showChoiceMenu() {
   choiceTimer = null;
-  if (mode !== 'choice' || !run) return; // забег мог быть завершён до появления меню
+  if (!(mode === 'choice' || debugOverlayFromPause) || !run) return; // забег мог быть завершён до появления меню
   choiceSelected = [];
   const fullControl = debugFullControl || debugFreeChoice;
   choicePicks = fullControl ? BUFFS.slice() : pickBuffs();
@@ -2987,6 +3120,14 @@ function confirmBuffSelection() {
   if (debugFreeChoice) {
     // Меню открыто из боковой панели: остаёмся в той же комнате.
     debugFreeChoice = false;
+    if (debugOverlayFromPause) {
+      debugOverlayFromPause = false;
+      showOverlay('pause');
+      mode = 'pause';
+      updateHud();
+      syncGameDebugPanel();
+      return;
+    }
     showOverlay(null);
     mode = 'play';
     updateHud();
@@ -3140,6 +3281,14 @@ function confirmWeaponChoice() {
   if (debugFreeInventory) {
     // Инвентарь открыт из боковой панели: остаёмся в той же комнате.
     debugFreeInventory = false;
+    if (debugOverlayFromPause) {
+      debugOverlayFromPause = false;
+      showOverlay('pause');
+      mode = 'pause';
+      updateHud();
+      syncGameDebugPanel();
+      return;
+    }
     updateHud();
     return;
   }
@@ -3184,6 +3333,7 @@ function finish(victory) {
   mode = 'end';
   debugFreeChoice = false;
   debugFreeInventory = false;
+  debugOverlayFromPause = false;
   syncGameDebugPanel();
   sfx(victory ? 'win' : 'lose');
   const net = Math.max(0, Math.round(run.damageDealt - run.damageTaken));
@@ -3200,7 +3350,7 @@ function finish(victory) {
   if (levelUps > 0) sfx('levelup');
   persist();
 
-  $('endTitle').textContent = victory ? `ВСЕ ${roomTotalLabel()} КОМНАТ ПРОЙДЕНЫ!` : 'ТЫ ПОГИБ';
+  $('endTitle').textContent = victory ? `ВСЕ ${roomTotalLabel()} КОМНАТ ПРОЙДЕНЫ!` : 'МЕНЮ ПРОИГРЫША';
   $('endTitle').className = victory ? 'win' : 'lose';
   const xpNotes = [];
   if (run.xpMul !== 1) xpNotes.push(`Опыт ×${run.xpMul} за сложность.`);
@@ -3223,16 +3373,11 @@ function finish(victory) {
   showOverlay('end');
   refreshMenu();
 
-  // Возврат в меню после показа результатов
-  let seconds = 6;
+  // Меню проигрыша/победы не уходит в главное меню само: игрок выбирает,
+  // играть сначала с тем же режимом и сложностью или вернуться в меню.
   const btn = $('menuBtn');
-  btn.textContent = `В МЕНЮ (${seconds})`;
-  if (endTimer) clearInterval(endTimer);
-  endTimer = setInterval(() => {
-    seconds--;
-    if (seconds <= 0) fadeOutTo(returnToMenu);
-    else btn.textContent = `В МЕНЮ (${seconds})`;
-  }, 1000);
+  btn.textContent = 'В МЕНЮ';
+  if (endTimer) { clearInterval(endTimer); endTimer = null; }
 }
 
 function returnToMenu() {
@@ -3254,6 +3399,7 @@ function returnToMenu() {
   debugFreeInventory = false;
   syncGameDebugPanel();
   refreshMenu();
+  positionLevelPanel();
 }
 
 /* ---------- Главный цикл ---------- */
@@ -3270,7 +3416,7 @@ function loop(now) {
       if (!visible) { resetJoystick(); mouse.down = false; }
     }
   }
-  // В режиме 100 комнат весь геймплей ускорен в 1,5 раза; спидхак умножает темп дополнительно
+  // Скорость мира одинакова во всех режимах; спидхак умножает темп дополнительно
   update(dt * (run ? run.timeScale : 1) * debugSpeed);
   if (mode === 'menu') {
     if (screens.menu.classList.contains('active')) updateMenuPreview(dt);
@@ -3305,6 +3451,12 @@ window.addEventListener('keydown', (e) => {
   keys.add(k);
   if (['space', 'escape', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault();
 
+  // Esc закрывает окно уровня игрока, не открывая паузу
+  if (k === 'escape' && screens.menu.classList.contains('active')) {
+    const card = document.querySelector('.menu-card');
+    if (card && card.classList.contains('level-open')) { collapseLevelPanel(); return; }
+  }
+
   // Esc сворачивает развёрнутую кнопку версии, не открывая паузу
   if (k === 'escape' && $('versionBtn').classList.contains('expanded')) {
     collapseVersion();
@@ -3319,7 +3471,15 @@ window.addEventListener('keydown', (e) => {
   // T / P / Esc открывают и закрывают паузу (KeyP работает и на русской раскладке — «З»)
   if (['t', 'p', 'escape'].includes(k) && !e.repeat) {
     if (mode === 'pause') {
-      if (screens.debug.classList.contains('active')) {
+      if (debugOverlayFromPause) {
+        // «ЕЩЕ»/«ИНВЕНТАРЬ» из паузы: закрываем окно и остаёмся в паузе
+        debugOverlayFromPause = false;
+        debugFreeChoice = false;
+        debugFreeInventory = false;
+        choiceSelected = [];
+        showOverlay('pause');
+        syncGameDebugPanel();
+      } else if (screens.debug.classList.contains('active')) {
         // из отладки, открытой через паузу, возвращаемся обратно в паузу
         showOverlay('pause');
       } else if (!screens.exitConfirm.classList.contains('active')) {
@@ -3451,6 +3611,7 @@ document.addEventListener('click', (e) => {
 
 // Выезжающее меню выбора режима и сложности
 function openSetup() {
+  collapseLevelPanel();
   document.querySelector('.menu-card').classList.add('setup-open');
   $('setupPanel').setAttribute('aria-hidden', 'false');
 }
@@ -3459,10 +3620,22 @@ function closeSetup() {
   $('setupPanel').setAttribute('aria-hidden', 'true');
 }
 
+$('menuLevelTrigger').addEventListener('click', toggleLevelPanel);
+$('menuLevelTrigger').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleLevelPanel(); }
+});
+$('levelPanel').addEventListener('click', (e) => {
+  if (e.target.classList.contains('level-panel-collapse')) collapseLevelPanel();
+});
+window.addEventListener('resize', () => {
+  if (document.querySelector('.menu-card').classList.contains('level-open')) positionLevelPanel();
+});
+
 $('playBtn').addEventListener('click', openSetup);
 $('startRunBtn').addEventListener('click', () => { closeSetup(); newRun(); });
 $('setupBackBtn').addEventListener('click', closeSetup);
 $('menuBtn').addEventListener('click', () => fadeOutTo(returnToMenu));
+$('restartBtn').addEventListener('click', () => fadeOutTo(newRun));
 $('soundBtn').addEventListener('click', toggleSound);
 $('pauseSoundBtn').addEventListener('click', toggleSound);
 
@@ -3569,6 +3742,7 @@ bindNumberField('debugXpInput', 'debugXpBtn', 'debugXpHint', (delta) => {
 $('infoBtn').addEventListener('click', () => {
   showOverlay(null);
   closeSetup();
+  collapseLevelPanel();
   animateBaseSwitch('menu', 'info', 'forward');
   resetInfoDetail();
 });
@@ -3580,6 +3754,7 @@ $('settingsBtn').addEventListener('click', () => {
   showOverlay(null);
   closeSetup();
   collapseVersion();
+  collapseLevelPanel();
   animateBaseSwitch('menu', 'settings', 'forward');
 });
 $('settingsExitBtn').addEventListener('click', () => {
@@ -3672,8 +3847,9 @@ function debugChangeStat(kind, delta) {
     p.maxHp = Math.max(1, p.maxHp + n);
     p.hp = clamp(p.hp + n, 1, p.maxHp);
   } else if (kind === 'attackSpeed') {
-    // Как и бафф «Скорость атаки +10»: число означает проценты.
-    p.attackSpeed = Math.max(0.05, p.attackSpeed * (1 + n / 100));
+    // Число прибавляется к процентам обычной скорости атаки:
+    // 100% + 10 = 110%, а не 100% × 1,1 от текущего значения.
+    p.attackSpeed = Math.max(0.05, p.attackSpeed + n / 100);
   } else if (kind === 'slow') {
     p.slow += n;
   }
@@ -3743,23 +3919,51 @@ function syncPauseDebugLayer() {
 
 // Меню из боковой панели: не завершаем комнату и не переходим в следующую.
 function debugOpenFreeChoice() {
-  if (!run || mode !== 'play') return;
+  if (!run || !['play', 'pause'].includes(mode)) return;
+  debugOverlayFromPause = mode === 'pause';
   debugFreeChoice = true;
   choiceSelected = [];
-  mode = 'choice';
+  if (!debugOverlayFromPause) mode = 'choice';
   showChoiceMenu();
 }
 
 function debugOpenFreeInventory() {
-  if (!run || mode !== 'play') return;
+  if (!run || !['play', 'pause'].includes(mode)) return;
+  debugOverlayFromPause = mode === 'pause';
   debugFreeInventory = true;
   openInventory();
+  if (debugOverlayFromPause) mode = 'pause';
+  syncGameDebugPanel();
 }
 
 function debugCompleteRoom() {
-  if (!run || mode !== 'play' || run.roomComplete) return;
-  if (run.room >= run.totalRooms) finish(true);
-  else openChoice();
+  if (!run || !['play', 'pause'].includes(mode) || run.roomComplete) return;
+  const fromPause = mode === 'pause';
+  if (choiceTimer) {
+    clearTimeout(choiceTimer);
+    choiceTimer = null;
+  }
+  choicePendingResume = false;
+  debugFreeChoice = false;
+  debugFreeInventory = false;
+  debugOverlayFromPause = false;
+  if (run.room >= run.totalRooms) {
+    pausedFrom = null;
+    showOverlay(null);
+    finish(true);
+    return;
+  }
+  // Из паузы комната переключается, но игра не возобновляется: можно пропускать дальше.
+  if (fromPause) {
+    pausedFrom = 'play';
+    showOverlay('pause');
+  } else {
+    pausedFrom = null;
+    showOverlay(null);
+    mode = 'play';
+  }
+  enterRoom(run.room + 1);
+  syncGameDebugPanel();
 }
 
 $('gdpMore').addEventListener('click', debugOpenFreeChoice);
@@ -3850,6 +4054,7 @@ syncSoundButtons();
 updateSaveLoadingUI();
 loadServerSave();
 refreshMenu();
+positionLevelPanel();
 applyNotices();
 showBase('menu');
 syncWindowSize();

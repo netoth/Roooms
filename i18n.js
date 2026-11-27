@@ -25,7 +25,7 @@ const EN = {
   '10 комнат': '10 rooms',
   '10 КОМНАТ': '10 ROOMS',
   '100 КОМНАТ': '100 ROOMS',
-  'скорость ×1,5': 'speed ×1.5',
+  'босс каждые 10 комнат': 'boss every 10 rooms',
   'ЧИСТОЕ ПОЛЕ': 'CLEAR FIELD',
   'бесконечно, без преград': 'endless, no obstacles',
   'БОССИНГ': 'BOSS RUSH',
@@ -54,7 +54,7 @@ const EN = {
   'ЯЗЫК ИНТЕРФЕЙСА': 'INTERFACE LANGUAGE',
   'ВЕРСИЯ ИГРЫ': 'GAME VERSION',
   'заглушка описания': 'Description placeholder',
-  [`ВЕРСИЯ 1.1
+  [`ВЕРСИЯ 1.2
 
 Крупные обновления:
 • Полный перевод интерфейса на английский с переключателем языка в настройках. Выбор сохраняется в save.json.
@@ -78,7 +78,10 @@ const EN = {
 • Два бесконечных режима: «Чистое поле» без преград и боссов и «Боссинг» с боссом в каждой комнате.
 • Рапира: урон 100%, оглушение врагов 1 с, замедление после рывка убрано.
 • Ближний бой: урон увеличен до 200%.
-• Меню режимов адаптировано под четыре карточки на альбомных экранах телефона.`]: `VERSION 1.1
+• Меню режимов адаптировано под четыре карточки на альбомных экранах телефона.
+• Урон врагов больше не растёт с комнатой; нижний и верхний лимит волны увеличивается на 10% за комнату.
+• Кнопка «ЗАВЕРШИТЬ УРОВЕНЬ» в отладке мгновенно переводит в следующую комнату без выбора эффектов и инвентаря; из паузы игра не возобновляется.
+• «ЕЩЕ» и «ИНВЕНТАРЬ» в отладке игры открываются из паузы и возвращают обратно в паузу.`]: `VERSION 1.2
 
 Major updates:
 • Full interface translation into English with a language switch in Settings. The choice is saved in save.json.
@@ -102,7 +105,10 @@ Additions:
 • Two endless modes: Clear Field with no obstacles or bosses, and Boss Rush with a boss in every room.
 • Rapier: 100% damage, 1s enemy stun, post-dash slowdown removed.
 • Melee: damage increased to 200%.
-• Mode menu adapted to four cards on landscape phone screens.`,
+• Mode menu adapted to four cards on landscape phone screens.
+• Enemy damage no longer grows per room; lower and upper wave limits increase by 10% each room.
+• The debug “CLEAR ROOM” button now instantly advances to the next room, skipping buff choice and inventory; from pause the game stays paused.
+• The debug “MORE” and “INVENTORY” panels now open from pause and return to pause when closed.`,
   'Русский язык': 'Russian',
   'Основной язык интерфейса': 'Main interface language',
   'Английский язык': 'English',
@@ -325,25 +331,25 @@ Additions:
   'ОПЫТ ×2': 'XP ×2',
   'ОПЫТ ×5': 'XP ×5',
   'Характеристики врагов ×1, количество врагов ×1.': 'Enemy stats ×1, enemy count ×1.',
-  'Волны по 2–3 врага; следующая приходит только после 100% убитых врагов предыдущей волны.': 'Waves of 2–3 enemies; the next arrives only after 100% of the previous wave is killed.',
+  'Волны по 2–3 врага; нижний и верхний лимит волны растут на 10% за комнату; следующая приходит только после 100% убитых врагов предыдущей волны.': 'Waves of 2–3 enemies; lower and upper wave limits grow by 10% per room; the next arrives only after 100% of the previous wave is killed.',
   'Новая комната полностью восстанавливает HP.': 'A new room fully restores HP.',
-  'Волны по 3–5 врагов; следующая приходит после 50% убитых.': 'Waves of 3–5 enemies; the next arrives after 50% are killed.',
+  'Волны по 3–5 врагов; нижний и верхний лимит волны растут на 10% за комнату; следующая приходит после 50% убитых.': 'Waves of 3–5 enemies; lower and upper wave limits grow by 10% per room; the next arrives after 50% are killed.',
   'Характеристики врагов ×1, количество врагов ×0,5.': 'Enemy stats ×1, enemy count ×0.5.',
-  'Волны по 4–5 врагов; следующая приходит после 50% убитых или через 5 секунд.': 'Waves of 4–5 enemies; the next arrives after 50% are killed or after 5 seconds.',
+  'Волны по 4–5 врагов; нижний и верхний лимит волны растут на 10% за комнату; следующая приходит после 50% убитых или через 5 секунд.': 'Waves of 4–5 enemies; lower and upper wave limits grow by 10% per room; the next arrives after 50% are killed or after 5 seconds.',
   'Характеристики врагов ×1,2 (HP, урон и скорость), количество врагов ×3.': 'Enemy stats ×1.2 (HP, damage and speed), enemy count ×3.',
-  'Волны по 5–6 врагов; следующая приходит после 20% убитых.': 'Waves of 5–6 enemies; the next arrives after 20% are killed.',
+  'Волны по 5–6 врагов; нижний и верхний лимит волны растут на 10% за комнату; следующая приходит после 20% убитых.': 'Waves of 5–6 enemies; lower and upper wave limits grow by 10% per room; the next arrives after 20% are killed.',
   'Новая комната НЕ лечит: здоровье приходится возвращать баффами и вампиризмом.': 'A new room does NOT heal: health must be restored with buffs and vampirism.',
 
   // Энциклопедия: режимы
-  'СКОРОСТЬ ×1,5': 'SPEED ×1.5',
-  'Стандартный забег из 10 комнат. Обычные враги сильнеют от комнаты к комнате на 5–30%.': 'Standard 10-room run. Regular enemies get 5–30% stronger each room.',
+  'БОСС КАЖДЫЕ 10': 'BOSS EVERY 10',
+  'Стандартный забег из 10 комнат. HP и количество обычных врагов растут на 5–30% за комнату, урон не меняется; лимиты волны +10% за комнату.': 'Standard 10-room run. Regular enemies gain 5–30% HP and count per room, damage stays the same; wave limits +10% per room.',
   'Боссы: на 5-й комнате 750 HP и 30 урона, на 10-й — 1500 HP и 50 урона.': 'Bosses: room 5 has 750 HP and 30 damage, room 10 has 1500 HP and 50 damage.',
   'В комнатах с боссом препятствия не создаются.': 'Boss rooms have no obstacles.',
-  'Забег из 100 комнат: весь геймплей ускорен в 1,5 раза.': '100-room run: all gameplay is 1.5× faster.',
+  'Забег из 100 комнат в обычном темпе.': '100-room run at normal speed.',
   'Босс каждые 10 комнат: 1000 HP и 50 урона, каждый следующий сильнее в 1,5 раза; на 100-й комнате параметры сбрасываются к первому боссу.': 'A boss every 10 rooms: 1000 HP and 50 damage, each next one 1.5× stronger; on room 100 stats reset to the first boss.',
   'Опыт не делится: итоговый множитель зависит только от выбранной сложности.': 'XP is not divided: the final multiplier depends only on the chosen difficulty.',
   'Бесконечный забег: комнат нет предела, пока не погибнешь.': 'Endless run: rooms never end until you die.',
-  'Препятствия и боссы не появляются — только обычные враги, которые сильнеют от комнаты к комнате на 5–30%.': 'No obstacles or bosses — only regular enemies that get 5–30% stronger each room.',
+  'Препятствия и боссы не появляются — только обычные враги: HP и количество растут на 5–30% за комнату, урон не меняется; лимиты волны +10% за комнату.': 'No obstacles or bosses — only regular enemies: HP and count grow 5–30% per room, damage stays the same; wave limits +10% per room.',
   'Победы в этом режиме нет: забег заканчивается только поражением.': 'There is no victory in this mode: the run ends only in defeat.',
   'Бесконечный забег: босс в каждой комнате, препятствия не создаются.': 'Endless run: a boss in every room, no obstacles.',
   'Босс: 750 HP и 30 урона в первой комнате, дальше +25% HP и +15% урона за комнату; после 10-й комнаты цикл начинается заново.': 'Boss: 750 HP and 30 damage in the first room, then +25% HP and +15% damage per room; after room 10 the cycle restarts.',
@@ -362,7 +368,7 @@ Additions:
   'Столкновения с препятствиями и краями комнаты не дают выйти за поле.': 'Collisions with obstacles and room edges keep you inside the field.',
   'АТАКА И ПРИЦЕЛ': 'ATTACK AND AIM',
   'ЛКМ или Пробел — удар/выстрел; направление задаёт курсор.': 'LMB or Space — attack/shoot; the cursor sets the direction.',
-  'По умолчанию зажатие повторяет атаку только у пистолета. В меню отладки игры переключатель «Автоматическая атака» разрешает зажатие для любого оружия.': 'By default, holding repeats attacks only with the pistol. In the gameplay debug menu, the “Auto attack” toggle enables holding for any weapon.',
+  'По умолчанию зажатие повторяет атаку только у пистолета и ближнего боя. Способность «Автомат» добавляет зажатие секире, рапире, дробовику и пулемёту; меню отладки разрешает его для любого оружия.': 'By default, holding repeats attacks only with the pistol and melee. The “Auto fire” ability adds holding to the axe, rapier, shotgun and MG; the gameplay debug menu enables it for any weapon.',
   'ПАУЗА И ВЫХОД': 'PAUSE AND EXIT',
   'T, P или Esc открывают паузу в бою, выборе эффекта и инвентаре; повторное нажатие возвращает из паузы в игру.': 'T, P or Esc open pause during combat, effect selection and inventory; pressing again returns from pause to the game.',
   'В паузе: «ПРОДОЛЖИТЬ», переключатель звука и «ВЫЙТИ В МЕНЮ» с подтверждением.': 'In pause: “RESUME”, the sound toggle and “EXIT TO MENU” with confirmation.',
@@ -386,11 +392,11 @@ Additions:
   '«Сбросить уровень» — возвращает уровень 1 и опыт 0 после подтверждения; «Назад» возвращает в меню или паузу.': '“Reset level” — returns to level 1 and XP 0 after confirmation; “Back” returns to the menu or pause.',
   'МЕНЮ ОТЛАДКИ ИГРЫ': 'GAMEPLAY DEBUG MENU',
   'БОКОВАЯ ПАНЕЛЬ': 'SIDEBAR',
-  'Пять полей с плюсом/минусом: урон, скорость, здоровье, скорость атаки (в процентах) и замедление врагов.': 'Five +/- fields: damage, speed, health, attack speed (percent) and enemy slow.',
+  'Пять полей с плюсом/минусом: урон, скорость, здоровье, скорость атаки и замедление врагов. В поле скорости атаки число прибавляется к текущему проценту от обычной скорости: +10 превращает 100% в 110%.': 'Five +/- fields: damage, speed, health, attack speed and enemy slow. In the attack speed field the number is added to the current percentage of normal speed: +10 turns 100% into 110%.',
   '«Автоматическая атака» — зажатие ЛКМ/Пробела работает для любого оружия; сама по себе кнопка атаку не начинает.': '“Auto attack” — holding LMB/Space works with any weapon; the toggle alone does not start an attack.',
   '«Пауза врагов» — враги, боссы, их пули, спавн и подкрепления замирают; игрок может двигаться, атаковать и менять настройки.': '“Enemy pause” — enemies, bosses, their bullets, spawning and reinforcements freeze; the player can move, attack and change settings.',
   '«Показывать в игре» — работает только при включённом главном переключателе: выключено — панель только в паузе, включено — и в паузе, и во время забега.': '“Show in game” — only works when the master toggle is on: off shows the panel only in pause, on shows it in pause and during the run.',
-  'Кнопки: «ЕЩЕ» — полный контроль без завершения комнаты; «ИНВЕНТАРЬ» — тоже без перехода; «ЗАВЕРШИТЬ УРОВЕНЬ» — обычный проход комнаты; «МЕНЮ ОТЛАДКИ» — открывает общую отладку через паузу.': 'Buttons: “MORE” — full control without clearing the room; “INVENTORY” — also without advancing; “CLEAR ROOM” — normal room completion; “DEBUG MENU” — opens the general debug menu through pause.',
+  'Кнопки: «ЕЩЕ» — полный контроль без завершения комнаты, из паузы открывается поверх паузы; «ИНВЕНТАРЬ» — тоже без перехода и тоже возвращает в паузу; «ЗАВЕРШИТЬ УРОВЕНЬ» — мгновенный переход в следующую комнату без выбора эффектов и инвентаря, из паузы игра не возобновляется; «МЕНЮ ОТЛАДКИ» — открывает общую отладку через паузу.': 'Buttons: “MORE” — full control without clearing the room; when opened from pause it appears over the pause screen; “INVENTORY” — also without advancing and also returns to pause; “CLEAR ROOM” — instantly advances to the next room, skipping buff choice and inventory; from pause the game stays paused; “DEBUG MENU” — opens the general debug menu through pause.',
 
   // Прочее
   'Шанс появиться между уровнями: ~18,5% за выбор из полного пула (две карточки).': 'Chance to appear between levels: ~18.5% when picking from the full pool (two cards).',
@@ -398,6 +404,62 @@ Additions:
   'XP · ПРЕДЕЛ ЧИСЛА JS': 'XP · JS NUMBER LIMIT',
   'работает': 'works',
   'не работает': 'does not work',
+
+  // Баффы и классы дропа
+  'НАВЫКИ': 'SKILLS',
+  'ИГРА': 'GAME',
+  'КЛАССЫ ДРОПА': 'DROP CLASSES',
+  'НАВЫКИ · ОРУЖИЕ · СПОСОБНОСТИ': 'SKILLS · WEAPONS · ABILITIES',
+  'Все выпадающие карточки делятся на три класса: навыки (урон, скорость, здоровье, скорость атаки и замедление врагов), оружие и способности.': 'All dropped cards belong to three classes: skills (damage, speed, health, attack speed and enemy slow), weapons and abilities.',
+  'Навыки бывают обычными (+10, обычный шанс) и улучшенными (+30, пониженный шанс). Исключение: здоровье — обычный навык даёт +20, улучшенный +60.': 'Skills come in normal (+10, normal chance) and improved (+30, lower chance) forms. Exception: health gives +20 as a normal skill and +60 as an improved one.',
+  'Оружие и способности уникальны и попадают в свои разделы энциклопедии.': 'Weapons and abilities are unique and have their own encyclopedia sections.',
+  'ОБЫЧНЫЙ НАВЫК': 'NORMAL SKILL',
+  'УЛУЧШЕННЫЙ НАВЫК · ПОНИЖЕННЫЙ ШАНС': 'IMPROVED SKILL · LOWER CHANCE',
+  'Здоровье +20': 'Health +20',
+  'Максимальное здоровье +20. Сразу восстанавливает 20 HP.': 'Max health +20. Immediately restores 20 HP.',
+  'Здоровье +60': 'Health +60',
+  'Максимальное здоровье +60. Сразу восстанавливает 60 HP.': 'Max health +60. Immediately restores 60 HP.',
+
+  // Способность «Автомат»
+  'АВТОМАТ': 'AUTO FIRE',
+  'АВТОМАТ ВЫКЛ': 'AUTO FIRE OFF',
+  'Автомат': 'Auto fire',
+  'Позволяет стрелять и атаковать зажатием ЛКМ или Пробела. Совместим с секирой, рапирой, дробовиком и пулемётом. Не работает с ближним боем и пистолетом (у пистолета зажатие и так есть). Включать и выключать можно в инвентаре.': 'Lets you shoot and attack by holding LMB or Space. Compatible with axe, rapier, shotgun and MG. Does not work with melee or pistol (the pistol already supports holding). Can be toggled in the inventory.',
+  'Атака по зажиму ЛКМ или Пробела. Совместим с секирой, рапирой, дробовиком и пулемётом; не работает с ближним боем и пистолетом. Включать и выключать можно в инвентаре.': 'Attack by holding LMB or Space. Compatible with axe, rapier, shotgun and MG; does not work with melee or pistol. Can be toggled in the inventory.',
+  'ПОНИЖЕННЫЙ ШАНС · УНИКАЛЬНЫЙ · СЕКИРА · РАПИРА · ДРОБОВИК · ПУЛЁМЁТ': 'LOWER CHANCE · UNIQUE · AXE · RAPIER · SHOTGUN · MG',
+  'Позволяет атаковать по зажиму ЛКМ или Пробела там, где обычно нужно нажимать каждый раз.': 'Lets you attack by holding LMB or Space where you normally need to press each time.',
+  'Совместимые оружия: секира, рапира, дробовик, пулемёт. Несовместимые: ближний бой и пистолет (пистолет и без него стреляет зажатием).': 'Compatible weapons: axe, rapier, shotgun, MG. Incompatible: melee and pistol (the pistol already fires when held).',
+
+  // Обновлённые описания оружия
+  'Удар по всей области сектора (~45°) между игроком и линией удара. Урон 200%, атака в 1,5 раза быстрее, можно зажимать.': 'A hit across the whole ~45° sector between the player and the strike arc. 200% damage, attacks 1.5× faster and can be held down.',
+  'Дальность 96, удар заполняет сектор ~45° от игрока до дуги, перезарядка 0,33 с (скорость атаки ×1,5), урон 200%, отбрасывание 170. Вплотную подошедшего врага удар откидывает почти к дуге. Зажатие ЛКМ или Пробела работает по умолчанию.': 'Range 96, the hit fills the ~45° sector from the player to the arc, 0.33s cooldown (1.5× attack speed), 200% damage, knockback 170. An enemy hugging the player is knocked almost to the arc. Holding LMB or Space works by default.',
+  'Фиксированные 0,66 с тряски и 3 с стрельбы; затем перегрев. Скорость атаки ускоряет выстрелы вдвое слабее и ускоряет остывание. Пули наносят 75% обычного урона.': 'Fixed 0.66s windup and 3s of firing; then overheat. Attack speed increases the fire rate half as much and speeds up cooling. Bullets deal 75% of normal damage.',
+  'Фиксированные 0,66 с тряски и 3 с стрельбы, затем перегрев. Скорость атаки ускоряет стрельбу вдвое слабее и ускоряет остывание. Пули наносят 75% урона. С «Автоматом» можно стрелять зажатием.': 'Fixed 0.66s windup and 3s of firing, then overheat. Attack speed increases the fire rate half as much and speeds up cooling. Bullets deal 75% damage. With “Auto fire” you can shoot by holding.',
+  'Фиксированные 0,66 с тряски и 3 с стрельбы с базовым интервалом 0,09 с; от скорости атаки не зависят. Затем перегрев: чем выше скорость атаки, тем быстрее остывание.': 'Fixed 0.66s windup and 3s of firing with a base 0.09s interval; neither depends on attack speed. Then overheat: higher attack speed means faster cooling.',
+  'Скорость атаки увеличивает темп стрельбы вдвое слабее. Если интервал доходит до 1/60 с, дальше растёт урон пуль. Пули наносят 75% обычного урона.': 'Attack speed increases the fire rate half as much. Once the interval reaches 1/60s, bullet damage grows instead. Bullets deal 75% of normal damage.',
+  'Зажатие работает только со способностью «Автомат». Получение: уникальная карточка «Пулемёт».': 'Holding works only with the “Auto fire” ability. How to get: unique “MG” card.',
+
+  // Игра: сложность, режимы и меню проигрыша
+  'ЧЕТЫРЕ ВАРИАНТА': 'FOUR OPTIONS',
+  'Лёгкий': 'Easy',
+  ': характеристики врагов ×0,8, количество ×1, волны 2–3, XP ×0,5; следующая волна только после полной зачистки, комната лечит.': ': enemy stats ×0.8, count ×1, waves of 2–3, XP ×0.5; the next wave arrives only after a full clear, the room heals.',
+  'Обычный': 'Normal',
+  ': характеристики и количество ×1, волны 3–5, XP ×1; следующая волна после 50% убитых, комната лечит.': ': stats and count ×1, waves of 3–5, XP ×1; the next wave arrives after 50% are killed, the room heals.',
+  'Сложный': 'Hard',
+  ': характеристики ×1,2, количество ×0,5, волны 4–5, XP ×2; следующая волна после 50% убитых или через 5 секунд, комната лечит.': ': stats ×1.2, count ×0.5, waves of 4–5, XP ×2; the next wave arrives after 50% are killed or after 5 seconds, the room heals.',
+  'Сверхтяжёлый': 'Ultra',
+  ': характеристики ×1,2, урон врагов дополнительно ×1,5, количество ×3, волны 5–6, XP ×5; следующая волна после 20% убитых или через 5 секунд простоя, комната НЕ лечит.': ': stats ×1.2, enemy damage additionally ×1.5, count ×3, waves of 5–6, XP ×5; the next wave arrives after 20% are killed or after 5 seconds of inactivity, the room does NOT heal.',
+  'У всех сложностей нижний и верхний лимит волны растут на 10% за комнату.': 'For every difficulty, lower and upper wave limits grow by 10% per room.',
+  'РЕЖИМ ИГРЫ · ОБЫЧНЫЙ': 'GAME MODE · NORMAL',
+  'РЕЖИМ ИГРЫ · 100 КОМНАТ': 'GAME MODE · 100 ROOMS',
+  'РЕЖИМ ИГРЫ · ЧИСТОЕ ПОЛЕ': 'GAME MODE · CLEAR FIELD',
+  'РЕЖИМ ИГРЫ · БОССИНГ': 'GAME MODE · BOSS RUSH',
+  'Стандартный забег из 10 комнат. Количество обычных врагов растёт на 5–30% за комнату. HP растёт так же до 20-й комнаты, после 20-й вдвое медленнее, с 30-й не растёт; урон не меняется; лимиты волны +10% за комнату.': 'Standard 10-room run. Regular enemy count grows 5–30% per room. HP grows the same way up to room 20, half as fast after room 20 and stops at room 30; damage stays the same; wave limits +10% per room.',
+  'Препятствия и боссы не появляются — только обычные враги: количество растёт на 5–30% за комнату, HP до 20-й так же, после 20-й вдвое медленнее, с 30-й не растёт; урон не меняется; лимиты волны +10% за комнату.': 'No obstacles or bosses — only regular enemies: count grows 5–30% per room, HP grows the same way up to room 20, half as fast after room 20 and stops at room 30; damage stays the same; wave limits +10% per room.',
+  'МЕНЮ ПРОИГРЫША': 'DEFEAT MENU',
+  'Экран, который появляется после поражения. Он не уходит в главное меню сам: можно нажать «ИГРАТЬ СНАЧАЛА» с тем же режимом и сложностью или «В МЕНЮ».': 'The screen shown after defeat. It does not return to the main menu by itself: choose “PLAY AGAIN” with the same mode and difficulty or “MENU”.',
+  'Статистика: комнаты, опыт за забег, полученный и нанесённый урон.': 'Stats: rooms, XP from the run, damage taken and damage dealt.',
+  'ИГРАТЬ СНАЧАЛА': 'PLAY AGAIN',
 };
 
 // Шаблоны для строк с подстановками. Порядок важен: сначала частные.
@@ -408,8 +470,8 @@ const PATTERNS = [
     (m, chance) => `Can be toggled in the inventory. Unique drop. ${translateText(chance)}`],
   [/^Шанс появиться между уровнями: ~([\d,]+)% за выбор из полного пула \(две карточки\)\.$/,
     (m, num) => `Chance to appear between levels: ~${num.replace(',', '.')}% when picking from the full pool (two cards).`],
-  [/^Способности: взрыв пуль — (.+?); вампиризм — (.+?)\.$/,
-    (m, a, b) => `Abilities: bullet explosion — ${translateText(a)}; vampirism — ${translateText(b)}.`],
+  [/^Способности: взрыв пуль — (.+?); вампиризм — (.+?); автомат — (.+?)\.$/,
+    (m, a, b, c) => `Abilities: bullet explosion — ${translateText(a)}; vampirism — ${translateText(b)}; auto fire — ${translateText(c)}.`],
   [/^«(.+)» снят\. Выбери эффекты и подтверди\.$/,
     (m, name) => `“${translateText(name)}” removed. Pick effects and confirm.`],
   [/^Победа! Опыт начислен полностью\.(?: (Опыт ×[\d.]+ за сложность\.))?$/,
